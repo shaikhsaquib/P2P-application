@@ -85,7 +85,7 @@ interface Invoice {
           </mat-card-content>
         </mat-card>
 
-        @if (inv()!.matchLines?.length > 0) {
+        @if ((inv()!.matchLines?.length ?? 0) > 0) {
           <mat-card class="match-card">
             <mat-card-header><mat-card-title>3-Way Match Results</mat-card-title></mat-card-header>
             <mat-card-content>

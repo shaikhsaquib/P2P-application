@@ -104,7 +104,7 @@ interface Supplier {
 
           <mat-tab label="Purchase Orders">
             <div class="tab-content">
-              @if (supplier()!.purchaseOrders?.length > 0) {
+              @if ((supplier()!.purchaseOrders?.length ?? 0) > 0) {
                 <table mat-table [dataSource]="supplier()!.purchaseOrders" class="full-width">
                   <ng-container matColumnDef="poNumber">
                     <th mat-header-cell *matHeaderCellDef>PO #</th>
@@ -129,7 +129,7 @@ interface Supplier {
 
           <mat-tab label="Invoices">
             <div class="tab-content">
-              @if (supplier()!.invoices?.length > 0) {
+              @if ((supplier()!.invoices?.length ?? 0) > 0) {
                 <table mat-table [dataSource]="supplier()!.invoices" class="full-width">
                   <ng-container matColumnDef="invoiceNumber">
                     <th mat-header-cell *matHeaderCellDef>Invoice #</th>

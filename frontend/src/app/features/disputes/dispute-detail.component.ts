@@ -84,7 +84,7 @@ interface Dispute {
                 <p class="no-messages">No messages yet. Start the conversation below.</p>
               }
               @for (msg of dispute()!.messages; track msg.id) {
-                <div class="message-bubble" [class.my-message]="msg.senderId === auth.currentUser()?.id">
+                <div class="message-bubble" [class.my-message]="msg.senderId === auth.user()?.id">
                   <div class="message-header">
                     <strong>{{ msg.senderName }}</strong>
                     <span class="message-time">{{ msg.createdAt | date:'short' }}</span>
