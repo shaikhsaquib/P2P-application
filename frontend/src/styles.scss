@@ -1,0 +1,8 @@
+@import '@angular/material/prebuilt-themes/indigo-pink.css';
+
+* { box-sizing: border-box; }
+body { margin: 0; font-family: 'Roboto', sans-serif; background: #f5f7fa; color: #333; }
+.page { max-width: 1400px; margin: 0 auto; }
+.snack-success .mat-mdc-snack-bar-container { background: #2e7d32 !important; color: white; }
+.snack-error .mat-mdc-snack-bar-container { background: #c62828 !important; color: white; }
+::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }

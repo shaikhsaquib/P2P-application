@@ -1,0 +1,27 @@
+# .NET
+bin/
+obj/
+*.user
+*.db
+*.db-shm
+*.db-wal
+logs/
+uploads/
+
+# Angular
+node_modules/
+dist/
+.angular/
+
+# Environment
+.env
+appsettings.Production.json
+
+# IDE
+.vscode/
+.idea/
+*.suo
+
+# OS
+.DS_Store
+Thumbs.db
