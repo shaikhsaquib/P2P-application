@@ -1,8 +1,27 @@
 @import '@angular/material/prebuilt-themes/indigo-pink.css';
 
 * { box-sizing: border-box; }
-body { margin: 0; font-family: 'Roboto', sans-serif; background: #f5f7fa; color: #333; }
+body { margin: 0; font-family: Roboto, sans-serif; background: #f5f7fa; color: #333; }
 .page { max-width: 1400px; margin: 0 auto; }
 .snack-success .mat-mdc-snack-bar-container { background: #2e7d32 !important; color: white; }
 .snack-error .mat-mdc-snack-bar-container { background: #c62828 !important; color: white; }
 ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+
+.mat-icon { font-family: 'Material Icons' !important; font-size: 24px; }
+
+.full-width { width: 100%; }
+.flex-spacer { flex: 1 1 auto; }
+
+.page-header {
+  margin-bottom: 24px;
+  h1 { margin: 0; font-size: 24px; font-weight: 600; color: #1e3a5f; }
+  p { margin: 4px 0 0; color: #666; font-size: 14px; }
+}
+
+.chip-draft    { background: #e0e0e0 !important; color: #424242 !important; }
+.chip-approved { background: #e8f5e9 !important; color: #2e7d32 !important; }
+.chip-pending  { background: #fff3e0 !important; color: #e65100 !important; }
+.chip-rejected { background: #ffebee !important; color: #c62828 !important; }
+.chip-paid     { background: #e3f2fd !important; color: #1565c0 !important; }
+.chip-matched  { background: #e8f5e9 !important; color: #2e7d32 !important; }
+.chip-mismatch { background: #ffebee !important; color: #c62828 !important; }

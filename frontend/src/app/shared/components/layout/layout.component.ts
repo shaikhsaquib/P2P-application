@@ -96,19 +96,56 @@ import { AuthService } from '../../../core/auth/auth.service';
   `,
   styles: [`
     .sidenav-container { height: 100vh; }
-    .sidenav { width: 260px; background: #1e3a5f; color: white; }
-    .sidenav-header { display: flex; align-items: center; gap: 12px; padding: 20px 16px; border-bottom: 1px solid rgba(255,255,255,0.1); }
-    .brand-icon { font-size: 32px; width: 32px; height: 32px; color: #64b5f6; }
-    .brand-name { font-weight: 600; font-size: 14px; color: white; }
-    .brand-role { font-size: 11px; color: rgba(255,255,255,0.6); text-transform: uppercase; }
-    .nav-section { padding: 16px 16px 4px; font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.8px; }
-    .sidenav mat-nav-list a { color: rgba(255,255,255,0.8); border-radius: 8px; margin: 2px 8px; }
-    .sidenav mat-nav-list a mat-icon { color: rgba(255,255,255,0.6); }
-    .active-link { background: rgba(100,181,246,0.2) !important; color: #64b5f6 !important; }
+    .sidenav { width: 260px; background: #1e3a5f; color: white; border-right: none !important; }
+    .sidenav-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 20px 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    .brand-icon {
+      font-size: 32px !important;
+      width: 32px !important;
+      height: 32px !important;
+      color: #64b5f6;
+      flex-shrink: 0;
+    }
+    .brand-name { font-weight: 600; font-size: 15px; color: white; line-height: 1.2; }
+    .brand-role { font-size: 11px; color: rgba(255,255,255,0.6); text-transform: uppercase; letter-spacing: 0.5px; }
+    .nav-section {
+      padding: 16px 16px 4px;
+      font-size: 11px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.4);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+    .sidenav mat-nav-list a {
+      color: rgba(255,255,255,0.8) !important;
+      border-radius: 8px;
+      margin: 2px 8px;
+    }
+    .sidenav mat-nav-list a mat-icon { color: rgba(255,255,255,0.6) !important; }
+    .active-link {
+      background: rgba(100,181,246,0.2) !important;
+      color: #64b5f6 !important;
+    }
     .active-link mat-icon { color: #64b5f6 !important; }
-    .toolbar { box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-    .flex-spacer { flex: 1; }
-    .content { padding: 24px; background: #f5f7fa; min-height: calc(100vh - 64px); }
+    .toolbar {
+      height: 64px !important;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.15) !important;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .flex-spacer { flex: 1 1 auto; }
+    .content {
+      padding: 24px;
+      background: #f5f7fa;
+      min-height: calc(100vh - 64px);
+      box-sizing: border-box;
+    }
   `]
 })
 export class LayoutComponent {

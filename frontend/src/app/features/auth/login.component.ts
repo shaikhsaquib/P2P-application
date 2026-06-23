@@ -62,13 +62,41 @@ import { NotificationService } from '../../core/services/notification.service';
     </div>
   `,
   styles: [`
-    .login-container { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(135deg, #1e3a5f 0%, #2d6a9f 100%); padding: 24px; }
-    .login-brand { text-align: center; color: white; margin-bottom: 32px; }
-    .brand-icon { font-size: 56px; width: 56px; height: 56px; margin-bottom: 8px; }
+    .login-container {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #1e3a5f 0%, #2d6a9f 100%);
+      padding: 24px;
+    }
+    .login-brand {
+      text-align: center;
+      color: white;
+      margin-bottom: 32px;
+    }
+    .brand-icon {
+      font-size: 56px !important;
+      width: 56px !important;
+      height: 56px !important;
+      margin-bottom: 8px;
+      display: block;
+      margin-left: auto;
+      margin-right: auto;
+    }
     .login-brand h1 { font-size: 28px; margin: 8px 0 4px; font-weight: 600; }
-    .login-brand p { opacity: 0.8; font-size: 14px; }
-    .login-card { width: 100%; max-width: 420px; border-radius: 12px; }
-    .full-width { width: 100%; margin-bottom: 8px; }
+    .login-brand p { opacity: 0.8; font-size: 14px; margin: 0; }
+    .login-card {
+      width: 100%;
+      max-width: 420px;
+      border-radius: 12px !important;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3) !important;
+    }
+    mat-card-header { padding: 16px 16px 0 !important; }
+    mat-card-content { padding: 16px !important; }
+    mat-card-actions { padding: 8px 16px 16px !important; }
+    .full-width { width: 100%; margin-bottom: 8px; display: block; }
     .login-btn { height: 48px; font-size: 16px; margin-top: 8px; }
     .demo-accounts { margin-top: 24px; border-top: 1px solid #eee; padding-top: 16px; }
     .demo-title { font-size: 12px; color: #666; margin-bottom: 8px; }
