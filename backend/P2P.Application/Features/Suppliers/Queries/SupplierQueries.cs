@@ -8,8 +8,6 @@ public record GetAllSuppliersQuery(int Page = 1, int PageSize = 20, string? Sear
 
 public record GetSupplierByIdQuery(string Id) : IRequest<BaseResponse<SupplierDto>>;
 public record GetPendingSuppliersQuery() : IRequest<BaseResponse<List<SupplierDto>>>;
-public record GetSupplierDashboardQuery(string SupplierId) : IRequest<BaseResponse<SupplierDashboardDto>>;
-
 public class SupplierDto
 {
     public string Id { get; set; } = string.Empty;
@@ -39,17 +37,6 @@ public class SupplierDocumentDto
     public DateTime UploadedAt { get; set; }
     public DateTime? ExpiryDate { get; set; }
     public bool IsVerified { get; set; }
-}
-
-public class SupplierDashboardDto
-{
-    public int ActivePOs { get; set; }
-    public int PendingInvoices { get; set; }
-    public int OpenRFQs { get; set; }
-    public decimal TotalBilledThisMonth { get; set; }
-    public decimal TotalPaidThisYear { get; set; }
-    public decimal OverdueAmount { get; set; }
-    public int OnTimeDeliveryPercent { get; set; }
 }
 
 public class NotificationDto
