@@ -99,6 +99,7 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     var userMgr = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
     var roleMgr = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+    await db.Database.EnsureCreatedAsync();
     await DbSeeder.SeedAsync(db, userMgr, roleMgr);
 }
 
