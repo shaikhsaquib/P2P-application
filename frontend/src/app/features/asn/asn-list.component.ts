@@ -17,7 +17,7 @@ import { NotificationService } from '../../core/services/notification.service';
 import { AuthService } from '../../core/auth/auth.service';
 
 interface ASN {
-  id: string; aSNNumber: string; pONumber: string;
+  id: string; asnNumber: string; poNumber: string;
   courierName: string; status: string; trackingNumber: string;
   estimatedDeliveryDate: string;
 }
@@ -65,11 +65,11 @@ interface ASN {
             <table mat-table [dataSource]="filteredASNs()" class="full-width">
               <ng-container matColumnDef="asnNumber">
                 <th mat-header-cell *matHeaderCellDef>ASN #</th>
-                <td mat-cell *matCellDef="let asn">{{ asn.aSNNumber }}</td>
+                <td mat-cell *matCellDef="let asn">{{ asn.asnNumber }}</td>
               </ng-container>
               <ng-container matColumnDef="poNumber">
                 <th mat-header-cell *matHeaderCellDef>PO #</th>
-                <td mat-cell *matCellDef="let asn">{{ asn.pONumber }}</td>
+                <td mat-cell *matCellDef="let asn">{{ asn.poNumber }}</td>
               </ng-container>
               <ng-container matColumnDef="shipmentDate">
                 <th mat-header-cell *matHeaderCellDef>Delivery Date</th>
