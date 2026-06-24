@@ -14,6 +14,8 @@ public class GoodsReceiptsController(IMediator mediator) : ControllerBase
     [HttpPost] public async Task<IActionResult> Create([FromBody] CreateGRCommand cmd, CancellationToken ct) => Ok(await mediator.Send(cmd, ct));
     [HttpPost("{id}/submit")] public async Task<IActionResult> Submit(string id, CancellationToken ct) => Ok(await mediator.Send(new SubmitGRCommand(id), ct));
     [HttpPost("{id}/verify"), Authorize(Roles = "Admin,Approver")] public async Task<IActionResult> Verify(string id, [FromBody] VerifyBody body, CancellationToken ct) => Ok(await mediator.Send(new VerifyGRCommand(id, body.Notes), ct));
+    [HttpPost("{id}/reject"), Authorize(Roles = "Admin,Approver")] public async Task<IActionResult> Reject(string id, [FromBody] RejectGRBody body, CancellationToken ct) => Ok(await mediator.Send(new RejectGRCommand(id, body.Reason), ct));
 }
 
 public record VerifyBody(string? Notes);
+public record RejectGRBody(string Reason);

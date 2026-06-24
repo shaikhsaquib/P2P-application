@@ -14,9 +14,11 @@ public class InvoicesController(IMediator mediator) : ControllerBase
     [HttpPost, Authorize(Roles = "SupplierAdmin,SupplierUser")] public async Task<IActionResult> Submit([FromBody] SubmitInvoiceCommand cmd, CancellationToken ct) => Ok(await mediator.Send(cmd, ct));
     [HttpPost("{id}/approve"), Authorize(Roles = "Admin,Finance")] public async Task<IActionResult> Approve(string id, CancellationToken ct) => Ok(await mediator.Send(new ApproveInvoiceCommand(id), ct));
     [HttpPost("{id}/reject"), Authorize(Roles = "Admin,Finance")] public async Task<IActionResult> Reject(string id, [FromBody] RejectInvoiceBody body, CancellationToken ct) => Ok(await mediator.Send(new RejectInvoiceCommand(id, body.Reason), ct));
+    [HttpPost("{id}/schedule-payment"), Authorize(Roles = "Admin,Finance")] public async Task<IActionResult> SchedulePayment(string id, [FromBody] SchedulePaymentBody body, CancellationToken ct) => Ok(await mediator.Send(new SchedulePaymentCommand(id, body.PaymentDate), ct));
     [HttpPost("{id}/mark-paid"), Authorize(Roles = "Admin,Finance")] public async Task<IActionResult> MarkPaid(string id, [FromBody] MarkPaidBody body, CancellationToken ct) => Ok(await mediator.Send(new MarkInvoicePaidCommand(id, body.PaymentReference), ct));
     [HttpPost("{id}/match")] public async Task<IActionResult> RunMatch(string id, CancellationToken ct) => Ok(await mediator.Send(new RunThreeWayMatchCommand(id), ct));
 }
 
 public record RejectInvoiceBody(string Reason);
+public record SchedulePaymentBody(DateTime PaymentDate);
 public record MarkPaidBody(string PaymentReference);

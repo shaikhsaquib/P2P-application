@@ -194,6 +194,26 @@ public class CreateASNHandler(ApplicationDbContext db, ICurrentUser currentUser,
     }
 }
 
+public class GetASNsBySupplierHandler(ApplicationDbContext db, IMapper mapper, ICurrentUser currentUser)
+    : IRequestHandler<GetASNsBySupplierQuery, BaseResponse<PagedResult<ASNDto>>>
+{
+    public async Task<BaseResponse<PagedResult<ASNDto>>> Handle(GetASNsBySupplierQuery req, CancellationToken ct)
+    {
+        var supplierId = currentUser.IsSupplier ? currentUser.SupplierId : req.SupplierId;
+        var query = db.AdvanceShipmentNotices.Include(a => a.Supplier).Include(a => a.PurchaseOrder)
+            .Include(a => a.Lines).Include(a => a.Documents).AsQueryable();
+        if (!string.IsNullOrEmpty(supplierId))
+            query = query.Where(a => a.SupplierId == supplierId);
+        var total = await query.CountAsync(ct);
+        var items = await query.OrderByDescending(a => a.CreatedAt)
+            .Skip((req.Page - 1) * req.PageSize).Take(req.PageSize).ToListAsync(ct);
+        return BaseResponse<PagedResult<ASNDto>>.Ok(new PagedResult<ASNDto>
+        {
+            Items = mapper.Map<List<ASNDto>>(items), TotalCount = total, Page = req.Page, PageSize = req.PageSize
+        });
+    }
+}
+
 public class GetASNsByPOHandler(ApplicationDbContext db, IMapper mapper)
     : IRequestHandler<GetASNsByPOQuery, BaseResponse<List<ASNDto>>>
 {
