@@ -5,7 +5,7 @@ namespace P2P.Application.Features.ASN.Queries;
 
 public record GetASNsByPOQuery(string POId) : IRequest<BaseResponse<List<ASNDto>>>;
 public record GetASNByIdQuery(string Id) : IRequest<BaseResponse<ASNDto>>;
-public record GetASNsBySupplierQuery(string SupplierId, int Page = 1, int PageSize = 20) : IRequest<BaseResponse<PagedResult<ASNDto>>>;
+public record GetASNsBySupplierQuery(string? SupplierId = null, int Page = 1, int PageSize = 20) : IRequest<BaseResponse<PagedResult<ASNDto>>>;
 
 public class ASNDto
 {

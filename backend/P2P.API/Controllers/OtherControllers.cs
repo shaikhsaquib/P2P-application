@@ -34,7 +34,7 @@ public class DisputesController(IMediator mediator) : ControllerBase
 public class DashboardController(IMediator mediator) : ControllerBase
 {
     [HttpGet("buyer")] public async Task<IActionResult> BuyerDashboard(CancellationToken ct) => Ok(await mediator.Send(new GetBuyerDashboardQuery(), ct));
-    [HttpGet("supplier/{supplierId}")] public async Task<IActionResult> SupplierDashboard(string supplierId, CancellationToken ct) => Ok(await mediator.Send(new GetSupplierDashboardQuery(supplierId), ct));
+    [HttpGet("supplier/{supplierId}")] public async Task<IActionResult> SupplierDashboard([FromRoute] string supplierId, CancellationToken ct) => Ok(await mediator.Send(new GetSupplierDashboardQuery(supplierId), ct));
 }
 
 [ApiController, Route("api/notifications"), Authorize]

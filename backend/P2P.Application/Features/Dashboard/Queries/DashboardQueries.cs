@@ -4,7 +4,7 @@ using P2P.Application.Common;
 namespace P2P.Application.Features.Dashboard.Queries;
 
 public record GetBuyerDashboardQuery() : IRequest<BaseResponse<BuyerDashboardDto>>;
-public record GetSupplierDashboardQuery(string SupplierId) : IRequest<BaseResponse<SupplierDashboardDto>>;
+public record GetSupplierDashboardQuery(string? SupplierId = null) : IRequest<BaseResponse<SupplierDashboardDto>>;
 
 public class BuyerDashboardDto
 {

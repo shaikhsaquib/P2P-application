@@ -352,24 +352,27 @@ public class GetBuyerDashboardHandler(ApplicationDbContext db)
     }
 }
 
-public class GetSupplierDashboardQueryHandler(ApplicationDbContext db)
+public class GetSupplierDashboardQueryHandler(ApplicationDbContext db, ICurrentUser currentUser)
     : IRequestHandler<GetSupplierDashboardQuery, BaseResponse<SupplierDashboardDto>>
 {
     public async Task<BaseResponse<SupplierDashboardDto>> Handle(GetSupplierDashboardQuery req, CancellationToken ct)
     {
+        var supplierId = req.SupplierId ?? currentUser.SupplierId;
+        if (string.IsNullOrEmpty(supplierId)) return BaseResponse<SupplierDashboardDto>.Fail("Supplier ID required");
+
         var now = DateTime.UtcNow;
         var startOfMonth = new DateTime(now.Year, now.Month, 1);
         var startOfYear = new DateTime(now.Year, 1, 1);
 
         var dto = new SupplierDashboardDto
         {
-            ActivePOs = await db.PurchaseOrders.CountAsync(p => p.SupplierId == req.SupplierId && p.Status != POStatus.Closed && p.Status != POStatus.Cancelled, ct),
-            PendingInvoices = await db.Invoices.CountAsync(i => i.SupplierId == req.SupplierId && (i.Status == InvoiceStatus.Submitted || i.Status == InvoiceStatus.UnderReview), ct),
-            OpenRFQs = await db.RFQs.CountAsync(r => r.Suppliers.Any(s => s.SupplierId == req.SupplierId) && r.Status == RFQStatus.Sent, ct),
-            OpenDisputes = await db.Disputes.CountAsync(d => d.Invoice.SupplierId == req.SupplierId && d.Status == DisputeStatus.Open, ct),
-            TotalBilledThisMonth = await db.Invoices.Where(i => i.SupplierId == req.SupplierId && i.CreatedAt >= startOfMonth).SumAsync(i => i.TotalAmount, ct),
-            TotalPaidThisYear = await db.Invoices.Where(i => i.SupplierId == req.SupplierId && i.Status == InvoiceStatus.Paid && i.PaidAt >= startOfYear).SumAsync(i => i.TotalAmount, ct),
-            OverdueAmount = await db.Invoices.Where(i => i.SupplierId == req.SupplierId && i.Status == InvoiceStatus.Approved && i.DueDate < now).SumAsync(i => i.TotalAmount, ct)
+            ActivePOs = await db.PurchaseOrders.CountAsync(p => p.SupplierId == supplierId && p.Status != POStatus.Closed && p.Status != POStatus.Cancelled, ct),
+            PendingInvoices = await db.Invoices.CountAsync(i => i.SupplierId == supplierId && (i.Status == InvoiceStatus.Submitted || i.Status == InvoiceStatus.UnderReview), ct),
+            OpenRFQs = await db.RFQs.CountAsync(r => r.Suppliers.Any(s => s.SupplierId == supplierId) && r.Status == RFQStatus.Sent, ct),
+            OpenDisputes = await db.Disputes.CountAsync(d => d.Invoice.SupplierId == supplierId && d.Status == DisputeStatus.Open, ct),
+            TotalBilledThisMonth = await db.Invoices.Where(i => i.SupplierId == supplierId && i.CreatedAt >= startOfMonth).SumAsync(i => i.TotalAmount, ct),
+            TotalPaidThisYear = await db.Invoices.Where(i => i.SupplierId == supplierId && i.Status == InvoiceStatus.Paid && i.PaidAt >= startOfYear).SumAsync(i => i.TotalAmount, ct),
+            OverdueAmount = await db.Invoices.Where(i => i.SupplierId == supplierId && i.Status == InvoiceStatus.Approved && i.DueDate < now).SumAsync(i => i.TotalAmount, ct)
         };
 
         return BaseResponse<SupplierDashboardDto>.Ok(dto);
