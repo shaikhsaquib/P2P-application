@@ -17,8 +17,9 @@ import { NotificationService } from '../../core/services/notification.service';
 import { AuthService } from '../../core/auth/auth.service';
 
 interface ASN {
-  id: string; asnNumber: string; poNumber: string;
-  shipmentDate: string; carrier: string; status: string; trackingNumber: string;
+  id: string; aSNNumber: string; pONumber: string;
+  courierName: string; status: string; trackingNumber: string;
+  estimatedDeliveryDate: string;
 }
 
 @Component({
@@ -64,19 +65,19 @@ interface ASN {
             <table mat-table [dataSource]="filteredASNs()" class="full-width">
               <ng-container matColumnDef="asnNumber">
                 <th mat-header-cell *matHeaderCellDef>ASN #</th>
-                <td mat-cell *matCellDef="let asn">{{ asn.asnNumber }}</td>
+                <td mat-cell *matCellDef="let asn">{{ asn.aSNNumber }}</td>
               </ng-container>
               <ng-container matColumnDef="poNumber">
                 <th mat-header-cell *matHeaderCellDef>PO #</th>
-                <td mat-cell *matCellDef="let asn">{{ asn.poNumber }}</td>
+                <td mat-cell *matCellDef="let asn">{{ asn.pONumber }}</td>
               </ng-container>
               <ng-container matColumnDef="shipmentDate">
-                <th mat-header-cell *matHeaderCellDef>Shipment Date</th>
-                <td mat-cell *matCellDef="let asn">{{ asn.shipmentDate | date:'mediumDate' }}</td>
+                <th mat-header-cell *matHeaderCellDef>Delivery Date</th>
+                <td mat-cell *matCellDef="let asn">{{ asn.estimatedDeliveryDate | date:'mediumDate' }}</td>
               </ng-container>
               <ng-container matColumnDef="carrier">
                 <th mat-header-cell *matHeaderCellDef>Carrier</th>
-                <td mat-cell *matCellDef="let asn">{{ asn.carrier }}</td>
+                <td mat-cell *matCellDef="let asn">{{ asn.courierName }}</td>
               </ng-container>
               <ng-container matColumnDef="status">
                 <th mat-header-cell *matHeaderCellDef>Status</th>
@@ -144,8 +145,9 @@ export class AsnListComponent implements OnInit {
 
   load() {
     this.loading.set(true);
-    this.api.get<ASN[]>('/asn').subscribe({
-      next: data => { this.asns.set(data); this.loading.set(false); },
+    const supplierId = this.auth.user()?.supplierId;
+    this.api.get<any>('asn', { supplierId }).subscribe({
+      next: r => { this.asns.set(r.data?.items ?? []); this.loading.set(false); },
       error: () => { this.notification.error('Failed to load ASNs'); this.loading.set(false); }
     });
   }
