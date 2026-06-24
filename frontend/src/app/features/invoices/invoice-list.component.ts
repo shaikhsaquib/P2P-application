@@ -18,7 +18,7 @@ import { AuthService } from '../../core/auth/auth.service';
 
 interface Invoice {
   id: string; invoiceNumber: string; poNumber: string;
-  supplier: string; amount: number; status: string; matchStatus: string;
+  supplierName: string; totalAmount: number; status: string; matchStatus: string;
 }
 
 @Component({
@@ -76,11 +76,11 @@ interface Invoice {
               </ng-container>
               <ng-container matColumnDef="supplier">
                 <th mat-header-cell *matHeaderCellDef>Supplier</th>
-                <td mat-cell *matCellDef="let inv">{{ inv.supplier }}</td>
+                <td mat-cell *matCellDef="let inv">{{ inv.supplierName }}</td>
               </ng-container>
               <ng-container matColumnDef="amount">
                 <th mat-header-cell *matHeaderCellDef>Amount</th>
-                <td mat-cell *matCellDef="let inv">{{ inv.amount | currency }}</td>
+                <td mat-cell *matCellDef="let inv">₹{{ inv.totalAmount | number:'1.2-2' }}</td>
               </ng-container>
               <ng-container matColumnDef="status">
                 <th mat-header-cell *matHeaderCellDef>Status</th>
@@ -151,7 +151,7 @@ export class InvoiceListComponent implements OnInit {
   filteredInvoices = computed(() => {
     const { search, status } = this.filterForm.value;
     return this.invoices().filter(inv => {
-      const matchSearch = !search || [inv.invoiceNumber, inv.poNumber, inv.supplier]
+      const matchSearch = !search || [inv.invoiceNumber, inv.poNumber, inv.supplierName]
         .some(v => v.toLowerCase().includes(search.toLowerCase()));
       const matchStatus = !status || inv.status === status;
       return matchSearch && matchStatus;
@@ -162,8 +162,8 @@ export class InvoiceListComponent implements OnInit {
 
   load() {
     this.loading.set(true);
-    this.api.get<Invoice[]>('/invoices').subscribe({
-      next: data => { this.invoices.set(data); this.loading.set(false); },
+    this.api.get<any>('invoices').subscribe({
+      next: r => { this.invoices.set(r.data?.items ?? []); this.loading.set(false); },
       error: () => { this.notification.error('Failed to load invoices'); this.loading.set(false); }
     });
   }
