@@ -16,8 +16,8 @@ import { ApiService } from '../../core/services/api.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { AuthService } from '../../core/auth/auth.service';
 
-interface PurchaseOrder { id: string; poNumber: string; supplier: string; }
-interface POLine { id: string; item: string; description: string; orderedQty: number; unitPrice: number; }
+interface PurchaseOrder { id: string; poNumber: string; supplierName: string; }
+interface POLine { id: string; itemCode: string; description: string; quantity: number; unitPrice: number; }
 
 @Component({
   selector: 'app-invoice-form',
@@ -43,7 +43,7 @@ interface POLine { id: string; item: string; description: string; orderedQty: nu
                   <mat-label>Purchase Order</mat-label>
                   <mat-select formControlName="purchaseOrderId" (selectionChange)="onPOSelected($event.value)">
                     @for (po of purchaseOrders(); track po.id) {
-                      <mat-option [value]="po.id">{{ po.poNumber }}</mat-option>
+                      <mat-option [value]="po.id">{{ po.poNumber }} — {{ po.supplierName }}</mat-option>
                     }
                   </mat-select>
                 </mat-form-field>
@@ -79,7 +79,7 @@ interface POLine { id: string; item: string; description: string; orderedQty: nu
                     <mat-card class="line-card" [formGroupName]="i">
                       <mat-card-content>
                         <div class="line-header">
-                          <strong>{{ lines()[i].item }}</strong>
+                          <strong>{{ lines()[i].itemCode }}</strong>
                         </div>
                         <div class="line-inputs">
                           <mat-form-field appearance="outline" class="desc-field">
@@ -165,8 +165,9 @@ export class InvoiceFormComponent implements OnInit {
   get linesArray() { return this.form.get('lines') as FormArray; }
 
   ngOnInit() {
-    this.api.get<PurchaseOrder[]>('/purchase-orders?supplierId=mine').subscribe({
-      next: data => this.purchaseOrders.set(data),
+    const supplierId = this.auth.user()?.supplierId;
+    this.api.get<any>('purchase-orders', { supplierId, page: 1, pageSize: 100 }).subscribe({
+      next: r => this.purchaseOrders.set(r.data?.items ?? []),
       error: () => this.notification.error('Failed to load purchase orders')
     });
   }
@@ -175,14 +176,15 @@ export class InvoiceFormComponent implements OnInit {
     this.linesArray.clear();
     this.lines.set([]);
     this.loadingLines.set(true);
-    this.api.get<POLine[]>(`/purchase-orders/${poId}/lines`).subscribe({
-      next: data => {
+    this.api.get<any>(`purchase-orders/${poId}`).subscribe({
+      next: r => {
+        const data: POLine[] = r.data?.lines ?? [];
         this.lines.set(data);
         data.forEach(line => {
           this.linesArray.push(this.fb.group({
             poLineId: [line.id],
             description: [line.description, Validators.required],
-            quantity: [line.orderedQty, [Validators.required, Validators.min(0)]],
+            quantity: [line.quantity, [Validators.required, Validators.min(0)]],
             unitPrice: [line.unitPrice, [Validators.required, Validators.min(0)]]
           }));
         });
@@ -207,8 +209,25 @@ export class InvoiceFormComponent implements OnInit {
   submit() {
     if (this.form.invalid) return;
     this.submitting.set(true);
-    this.api.post('/invoices', this.form.value).subscribe({
-      next: () => { this.notification.success('Invoice submitted'); this.router.navigate(['/invoices']); },
+    const v = this.form.value;
+    const payload = {
+      poId: v.purchaseOrderId,
+      grId: null,
+      vendorInvoiceNumber: v.bankReference || null,
+      invoiceDate: v.invoiceDate,
+      dueDate: v.dueDate,
+      blobUrl: null,
+      lines: (v.lines as any[]).map(l => ({
+        poLineId: l.poLineId,
+        grLineId: null,
+        description: l.description,
+        quantity: l.quantity,
+        unitPrice: l.unitPrice,
+        taxRate: 0
+      }))
+    };
+    this.api.post<any>('invoices', payload).subscribe({
+      next: r => { this.notification.success('Invoice submitted'); this.router.navigate(['/invoices', r.data]); },
       error: () => { this.notification.error('Failed to submit invoice'); this.submitting.set(false); }
     });
   }
