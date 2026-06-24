@@ -16,8 +16,8 @@ import { ApiService } from '../../core/services/api.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { AuthService } from '../../core/auth/auth.service';
 
-interface PurchaseOrder { id: string; poNumber: string; supplier: string; }
-interface POLine { id: string; item: string; description: string; orderedQty: number; }
+interface PurchaseOrder { Id: string; PONumber: string; SupplierName: string; }
+interface POLine { Id: string; ItemCode: string; Description: string; Quantity: number; }
 
 @Component({
   selector: 'app-asn-form',
@@ -42,8 +42,8 @@ interface POLine { id: string; item: string; description: string; orderedQty: nu
                 <mat-form-field appearance="outline">
                   <mat-label>Purchase Order</mat-label>
                   <mat-select formControlName="purchaseOrderId" (selectionChange)="onPOSelected($event.value)">
-                    @for (po of purchaseOrders(); track po.id) {
-                      <mat-option [value]="po.id">{{ po.poNumber }}</mat-option>
+                    @for (po of purchaseOrders(); track po.Id) {
+                      <mat-option [value]="po.Id">{{ po.PONumber }} — {{ po.SupplierName }}</mat-option>
                     }
                   </mat-select>
                 </mat-form-field>
@@ -85,10 +85,10 @@ interface POLine { id: string; item: string; description: string; orderedQty: nu
                     <mat-card class="line-card" [formGroupName]="i">
                       <mat-card-content>
                         <div class="line-header">
-                          <strong>{{ lines()[i].item }}</strong>
-                          <span class="ordered-qty">Ordered: {{ lines()[i].orderedQty }}</span>
+                          <strong>{{ lines()[i].ItemCode }}</strong>
+                          <span class="ordered-qty">Ordered: {{ lines()[i].Quantity }}</span>
                         </div>
-                        <p class="line-desc">{{ lines()[i].description }}</p>
+                        <p class="line-desc">{{ lines()[i].Description }}</p>
                         <mat-form-field appearance="outline">
                           <mat-label>Shipped Qty</mat-label>
                           <input matInput type="number" formControlName="shippedQty" min="0" [max]="lines()[i].orderedQty">
@@ -150,7 +150,7 @@ export class AsnFormComponent implements OnInit {
 
   ngOnInit() {
     const supplierId = this.auth.user()?.supplierId;
-    this.api.get<any>('purchase-orders', { supplierId, status: 'SentToSupplier,Acknowledged', page: 1, pageSize: 100 }).subscribe({
+    this.api.get<any>('purchase-orders', { supplierId, page: 1, pageSize: 100 }).subscribe({
       next: r => this.purchaseOrders.set(r.data?.items ?? r.data ?? []),
       error: () => this.notification.error('Failed to load purchase orders')
     });
@@ -160,8 +160,9 @@ export class AsnFormComponent implements OnInit {
     this.linesArray.clear();
     this.lines.set([]);
     this.loadingLines.set(true);
-    this.api.get<POLine[]>(`/purchase-orders/${poId}/lines`).subscribe({
-      next: data => {
+    this.api.get<any>(`purchase-orders/${poId}`).subscribe({
+      next: r => {
+        const data: POLine[] = r.data?.Lines ?? [];
         this.lines.set(data);
         data.forEach(() => {
           this.linesArray.push(this.fb.group({
@@ -180,7 +181,7 @@ export class AsnFormComponent implements OnInit {
     const payload = {
       ...this.form.value,
       lines: (this.form.value.lines as any[]).map((l, i) => ({
-        poLineId: this.lines()[i].id,
+        poLineId: this.lines()[i].Id,
         shippedQty: l.shippedQty
       }))
     };
