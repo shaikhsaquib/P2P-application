@@ -25,11 +25,14 @@ public class SubmitInvoiceHandler(ApplicationDbContext db, ICurrentUser currentU
             .Where(pl => poLineIds.Contains(pl.Id))
             .ToDictionaryAsync(pl => pl.Id, ct);
 
-        var alreadyInvoiced = await db.InvoiceLines
+        // Sum in memory — SQLite cannot aggregate decimal in SQL
+        var existingInvoiceLines = await db.InvoiceLines
             .Where(il => poLineIds.Contains(il.POLineId) && il.Invoice.Status != InvoiceStatus.Rejected)
+            .Select(il => new { il.POLineId, il.Quantity })
+            .ToListAsync(ct);
+        var alreadyInvoiced = existingInvoiceLines
             .GroupBy(il => il.POLineId)
-            .Select(g => new { POLineId = g.Key, Qty = g.Sum(x => x.Quantity) })
-            .ToDictionaryAsync(x => x.POLineId, x => x.Qty, ct);
+            .ToDictionary(g => g.Key, g => g.Sum(x => x.Quantity));
 
         foreach (var l in req.Lines)
         {

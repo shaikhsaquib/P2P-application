@@ -76,15 +76,18 @@ public class GetPOByIdHandler(ApplicationDbContext db, IMapper mapper)
         var dto = mapper.Map<PODto>(po);
 
         // Compute already-invoiced quantity per PO line (all invoices except Rejected)
-        var invoicedByLine = await db.InvoiceLines
+        // Note: sum in memory — SQLite cannot aggregate decimal in SQL
+        var invoiceLines = await db.InvoiceLines
             .Where(il => il.Invoice.POId == po.Id && il.Invoice.Status != InvoiceStatus.Rejected)
-            .GroupBy(il => il.POLineId)
-            .Select(g => new { POLineId = g.Key, Qty = g.Sum(x => x.Quantity) })
+            .Select(il => new { il.POLineId, il.Quantity })
             .ToListAsync(ct);
+        var invoicedByLine = invoiceLines
+            .GroupBy(il => il.POLineId)
+            .ToDictionary(g => g.Key, g => g.Sum(x => x.Quantity));
 
         foreach (var line in dto.Lines)
         {
-            var invoiced = invoicedByLine.FirstOrDefault(x => x.POLineId == line.Id)?.Qty ?? 0;
+            var invoiced = invoicedByLine.TryGetValue(line.Id, out var q) ? q : 0;
             line.InvoicedQuantity = invoiced;
             line.RemainingToInvoice = Math.Max(0, line.ReceivedQuantity - invoiced);
         }
