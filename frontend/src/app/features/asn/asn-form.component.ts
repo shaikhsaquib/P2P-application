@@ -178,14 +178,21 @@ export class AsnFormComponent implements OnInit {
   submit() {
     if (this.form.invalid) return;
     this.submitting.set(true);
+    const v = this.form.value;
     const payload = {
-      ...this.form.value,
-      lines: (this.form.value.lines as any[]).map((l, i) => ({
+      poId: v.purchaseOrderId,
+      estimatedDeliveryDate: v.expectedDeliveryDate,
+      trackingNumber: v.trackingNumber || null,
+      courierName: v.carrier || null,
+      notes: null,
+      lines: (v.lines as any[]).map((l, i) => ({
         poLineId: this.lines()[i].id,
-        shippedQty: l.shippedQty
+        shippedQuantity: l.shippedQty,
+        batchNumber: null,
+        serialNumber: null
       }))
     };
-    this.api.post('/asn', payload).subscribe({
+    this.api.post('asn', payload).subscribe({
       next: () => { this.notification.success('ASN created successfully'); this.router.navigate(['/asn']); },
       error: () => { this.notification.error('Failed to create ASN'); this.submitting.set(false); }
     });
