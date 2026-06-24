@@ -83,7 +83,7 @@ export class POListComponent implements OnInit {
   statuses = ['Draft','PendingApproval','Approved','SentToSupplier','Acknowledged','PartiallyReceived','FullyReceived','Closed','Cancelled'];
   private t: any;
   ngOnInit() { this.load(); }
-  load() { this.api.get<any>('purchase-orders', { page: this.page, pageSize: this.pageSize, status: this.statusFilter||null, search: this.search||null }).subscribe(r => { this.items = r.data?.items??[]; this.totalCount = r.data?.totalCount??0; }); }
+  load() { const supplierId = this.auth.isSupplier() ? this.auth.user()?.supplierId : null; this.api.get<any>('purchase-orders', { page: this.page, pageSize: this.pageSize, status: this.statusFilter||null, search: this.search||null, supplierId }).subscribe(r => { this.items = r.data?.items??[]; this.totalCount = r.data?.totalCount??0; }); }
   onSearch() { clearTimeout(this.t); this.t = setTimeout(() => this.load(), 400); }
   onPage(e: PageEvent) { this.page = e.pageIndex+1; this.pageSize = e.pageSize; this.load(); }
   approve(id: string) { this.api.post(`purchase-orders/${id}/approve`, {}).subscribe({ next: () => { this.notify.success('PO approved'); this.load(); }, error: () => this.notify.error('Failed') }); }

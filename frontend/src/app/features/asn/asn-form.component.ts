@@ -14,6 +14,7 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ApiService } from '../../core/services/api.service';
 import { NotificationService } from '../../core/services/notification.service';
+import { AuthService } from '../../core/auth/auth.service';
 
 interface PurchaseOrder { id: string; poNumber: string; supplier: string; }
 interface POLine { id: string; item: string; description: string; orderedQty: number; }
@@ -129,6 +130,7 @@ export class AsnFormComponent implements OnInit {
   private notification = inject(NotificationService);
   private router = inject(Router);
   private fb = inject(FormBuilder);
+  private auth = inject(AuthService);
 
   purchaseOrders = signal<PurchaseOrder[]>([]);
   lines = signal<POLine[]>([]);
@@ -147,8 +149,9 @@ export class AsnFormComponent implements OnInit {
   get linesArray() { return this.form.get('lines') as FormArray; }
 
   ngOnInit() {
-    this.api.get<PurchaseOrder[]>('/purchase-orders?supplierId=mine&status=SentToSupplier,Acknowledged').subscribe({
-      next: data => this.purchaseOrders.set(data),
+    const supplierId = this.auth.user()?.supplierId;
+    this.api.get<any>('purchase-orders', { supplierId, status: 'SentToSupplier,Acknowledged', page: 1, pageSize: 100 }).subscribe({
+      next: r => this.purchaseOrders.set(r.data?.items ?? r.data ?? []),
       error: () => this.notification.error('Failed to load purchase orders')
     });
   }
