@@ -30,6 +30,7 @@ export const routes: Routes = [
       { path: 'suppliers/:id', loadComponent: () => import('./features/suppliers/supplier-detail.component').then(m => m.SupplierDetailComponent) },
       { path: 'asn', loadComponent: () => import('./features/asn/asn-list.component').then(m => m.AsnListComponent) },
       { path: 'asn/new', loadComponent: () => import('./features/asn/asn-form.component').then(m => m.AsnFormComponent) },
+      { path: 'asn/:id', loadComponent: () => import('./features/asn/asn-detail.component').then(m => m.AsnDetailComponent) },
       { path: 'disputes', loadComponent: () => import('./features/disputes/dispute-list.component').then(m => m.DisputeListComponent) },
       { path: 'disputes/:id', loadComponent: () => import('./features/disputes/dispute-detail.component').then(m => m.DisputeDetailComponent) },
     ]
