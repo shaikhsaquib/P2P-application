@@ -191,7 +191,7 @@ export class PODetailComponent implements OnInit {
   approve() {
     if (!confirm('Approve this purchase order?')) return;
     this.actionLoading = true;
-    this.api.put(`purchase-orders/${this.po.id}/approve`, {}).subscribe({
+    this.api.post(`purchase-orders/${this.po.id}/approve`, {}).subscribe({
       next: () => { this.notify.success('PO approved'); this.po.status = 'Approved'; this.actionLoading = false; },
       error: () => { this.notify.error('Failed to approve'); this.actionLoading = false; }
     });
@@ -201,7 +201,7 @@ export class PODetailComponent implements OnInit {
     const reason = prompt('Rejection reason:');
     if (!reason) return;
     this.actionLoading = true;
-    this.api.put(`purchase-orders/${this.po.id}/reject`, { reason }).subscribe({
+    this.api.post(`purchase-orders/${this.po.id}/reject`, { reason }).subscribe({
       next: () => { this.notify.success('PO rejected'); this.po.status = 'Rejected'; this.po.rejectionReason = reason; this.actionLoading = false; },
       error: () => { this.notify.error('Failed to reject'); this.actionLoading = false; }
     });
@@ -210,7 +210,7 @@ export class PODetailComponent implements OnInit {
   sendToSupplier() {
     if (!confirm('Send this PO to the supplier?')) return;
     this.actionLoading = true;
-    this.api.put(`purchase-orders/${this.po.id}/send`, {}).subscribe({
+    this.api.post(`purchase-orders/${this.po.id}/send`, {}).subscribe({
       next: () => { this.notify.success('PO sent to supplier'); this.po.status = 'SentToSupplier'; this.po.sentAt = new Date(); this.actionLoading = false; },
       error: () => { this.notify.error('Failed to send PO'); this.actionLoading = false; }
     });
@@ -219,7 +219,7 @@ export class PODetailComponent implements OnInit {
   acknowledge() {
     if (!confirm('Acknowledge receipt of this purchase order?')) return;
     this.actionLoading = true;
-    this.api.put(`purchase-orders/${this.po.id}/acknowledge`, {}).subscribe({
+    this.api.post(`purchase-orders/${this.po.id}/acknowledge`, {}).subscribe({
       next: () => { this.notify.success('PO acknowledged'); this.po.status = 'Acknowledged'; this.po.acknowledgedAt = new Date(); this.actionLoading = false; },
       error: () => { this.notify.error('Failed to acknowledge'); this.actionLoading = false; }
     });

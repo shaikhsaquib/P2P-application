@@ -144,14 +144,14 @@ export class SupplierListComponent implements OnInit {
   }
 
   approve(s: Supplier) {
-    this.api.put(`/suppliers/${s.id}/approve`, {}).subscribe({
+    this.api.post(`/suppliers/${s.id}/approve`, {}).subscribe({
       next: () => { this.notification.success(`${s.name} approved`); this.load(); },
       error: () => this.notification.error('Failed to approve supplier')
     });
   }
 
   reject(s: Supplier) {
-    this.api.put(`/suppliers/${s.id}/reject`, {}).subscribe({
+    this.api.post(`/suppliers/${s.id}/reject`, {}).subscribe({
       next: () => { this.notification.success(`${s.name} rejected`); this.load(); },
       error: () => this.notification.error('Failed to reject supplier')
     });

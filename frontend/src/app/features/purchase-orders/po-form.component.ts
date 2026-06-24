@@ -199,25 +199,17 @@ export class POFormComponent implements OnInit {
     return (c.get('quantity')?.value ?? 0) * (c.get('unitPrice')?.value ?? 0);
   }
 
-  save(submit = false) {
+  save() {
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
     this.loading = true;
     this.api.post<any>('purchase-orders', this.form.value).subscribe({
-      next: (r) => {
-        const id = r.data?.id ?? r.data;
-        if (submit && id) {
-          this.api.put(`purchase-orders/${id}/submit`, {}).subscribe({
-            next: () => { this.notify.success('PO submitted for approval'); this.router.navigate(['/purchase-orders']); },
-            error: () => { this.notify.success('PO saved as draft'); this.router.navigate(['/purchase-orders']); }
-          });
-        } else {
-          this.notify.success('PO saved as draft');
-          this.router.navigate(['/purchase-orders']);
-        }
+      next: () => {
+        this.notify.success('Purchase Order created successfully');
+        this.router.navigate(['/purchase-orders']);
       },
       error: () => { this.notify.error('Failed to create purchase order'); this.loading = false; }
     });
   }
 
-  saveAndSubmit() { this.save(true); }
+  saveAndSubmit() { this.save(); }
 }

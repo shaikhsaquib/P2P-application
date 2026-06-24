@@ -179,7 +179,7 @@ export class InvoiceDetailComponent implements OnInit {
   action(type: string) {
     const id = this.inv()!.id;
     this.actioning.set(true);
-    this.api.put(`/invoices/${id}/${type}`, {}).subscribe({
+    this.api.post(`/invoices/${id}/${type}`, {}).subscribe({
       next: (data: any) => { this.inv.set(data); this.notification.success(`Invoice ${type} successful`); this.actioning.set(false); },
       error: () => { this.notification.error(`Failed to ${type} invoice`); this.actioning.set(false); }
     });

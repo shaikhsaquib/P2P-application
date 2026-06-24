@@ -165,7 +165,7 @@ export class GrDetailComponent implements OnInit {
   verify() {
     const id = this.gr()!.id;
     this.actioning.set(true);
-    this.api.put(`/goods-receipts/${id}/verify`, {}).subscribe({
+    this.api.post(`/goods-receipts/${id}/verify`, {}).subscribe({
       next: (data: any) => { this.gr.set(data); this.notification.success('GR Verified'); this.actioning.set(false); },
       error: () => { this.notification.error('Failed to verify GR'); this.actioning.set(false); }
     });
@@ -174,7 +174,7 @@ export class GrDetailComponent implements OnInit {
   reject() {
     const id = this.gr()!.id;
     this.actioning.set(true);
-    this.api.put(`/goods-receipts/${id}/reject`, {}).subscribe({
+    this.api.post(`/goods-receipts/${id}/reject`, {}).subscribe({
       next: (data: any) => { this.gr.set(data); this.notification.success('GR Rejected'); this.actioning.set(false); },
       error: () => { this.notification.error('Failed to reject GR'); this.actioning.set(false); }
     });

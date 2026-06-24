@@ -171,7 +171,7 @@ export class DisputeDetailComponent implements OnInit {
   action(type: string) {
     const id = this.dispute()!.id;
     this.actioning.set(true);
-    this.api.put(`/disputes/${id}/${type}`, {}).subscribe({
+    this.api.post(`/disputes/${id}/${type}`, {}).subscribe({
       next: (data: any) => { this.dispute.set(data); this.notification.success(`Dispute ${type}d`); this.actioning.set(false); },
       error: () => { this.notification.error(`Failed to ${type} dispute`); this.actioning.set(false); }
     });

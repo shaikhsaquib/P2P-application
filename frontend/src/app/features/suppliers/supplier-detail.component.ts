@@ -196,7 +196,7 @@ export class SupplierDetailComponent implements OnInit {
   approve() {
     const id = this.supplier()!.id;
     this.actioning.set(true);
-    this.api.put(`/suppliers/${id}/approve`, {}).subscribe({
+    this.api.post(`/suppliers/${id}/approve`, {}).subscribe({
       next: (data: any) => { this.supplier.set(data); this.notification.success('Supplier approved'); this.actioning.set(false); },
       error: () => { this.notification.error('Failed to approve supplier'); this.actioning.set(false); }
     });
@@ -205,7 +205,7 @@ export class SupplierDetailComponent implements OnInit {
   reject() {
     const id = this.supplier()!.id;
     this.actioning.set(true);
-    this.api.put(`/suppliers/${id}/reject`, {}).subscribe({
+    this.api.post(`/suppliers/${id}/reject`, {}).subscribe({
       next: (data: any) => { this.supplier.set(data); this.notification.success('Supplier rejected'); this.actioning.set(false); },
       error: () => { this.notification.error('Failed to reject supplier'); this.actioning.set(false); }
     });

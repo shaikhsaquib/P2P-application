@@ -271,7 +271,7 @@ export class RfqDetailComponent implements OnInit {
   sendRFQ() {
     if (!confirm('Send this RFQ to all invited suppliers?')) return;
     this.actionLoading = true;
-    this.api.put(`rfq/${this.rfq.id}/send`, {}).subscribe({
+    this.api.post(`rfq/${this.rfq.id}/send`, {}).subscribe({
       next: () => { this.notify.success('RFQ sent to suppliers'); this.rfq.status = 'Sent'; this.actionLoading = false; },
       error: () => { this.notify.error('Failed to send RFQ'); this.actionLoading = false; }
     });
@@ -280,7 +280,7 @@ export class RfqDetailComponent implements OnInit {
   evaluateQuotes() {
     if (!confirm('Evaluate all quotes and select the best offer? A PO will be auto-created for the winner.')) return;
     this.actionLoading = true;
-    this.api.put<any>(`rfq/${this.rfq.id}/evaluate`, {}).subscribe({
+    this.api.post<any>(`rfq/${this.rfq.id}/evaluate`, {}).subscribe({
       next: r => {
         this.notify.success('Quotes evaluated. Winning quote selected and PO created.');
         this.createdPoId = r.data?.poId ?? null;
@@ -295,7 +295,7 @@ export class RfqDetailComponent implements OnInit {
   selectWinner(quoteId: string) {
     if (!confirm('Select this quote as the winner and create a PO?')) return;
     this.actionLoading = true;
-    this.api.put<any>(`rfq/${this.rfq.id}/evaluate`, { winnerId: quoteId }).subscribe({
+    this.api.post<any>(`rfq/${this.rfq.id}/evaluate`, { winnerId: quoteId }).subscribe({
       next: r => {
         this.notify.success('Winner selected and PO created.');
         this.createdPoId = r.data?.poId ?? null;
