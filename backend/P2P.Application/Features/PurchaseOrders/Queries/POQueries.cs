@@ -47,4 +47,6 @@ public class POLineDto
     public decimal UnitPrice { get; set; }
     public decimal TotalPrice { get; set; }
     public decimal ReceivedQuantity { get; set; }
+    public decimal InvoicedQuantity { get; set; }
+    public decimal RemainingToInvoice { get; set; }
 }

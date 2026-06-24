@@ -72,7 +72,24 @@ public class GetPOByIdHandler(ApplicationDbContext db, IMapper mapper)
             .Include(p => p.ApprovedBy).Include(p => p.Lines)
             .FirstOrDefaultAsync(p => p.Id == req.Id, ct);
         if (po == null) return BaseResponse<PODto>.Fail("PO not found");
-        return BaseResponse<PODto>.Ok(mapper.Map<PODto>(po));
+
+        var dto = mapper.Map<PODto>(po);
+
+        // Compute already-invoiced quantity per PO line (all invoices except Rejected)
+        var invoicedByLine = await db.InvoiceLines
+            .Where(il => il.Invoice.POId == po.Id && il.Invoice.Status != InvoiceStatus.Rejected)
+            .GroupBy(il => il.POLineId)
+            .Select(g => new { POLineId = g.Key, Qty = g.Sum(x => x.Quantity) })
+            .ToListAsync(ct);
+
+        foreach (var line in dto.Lines)
+        {
+            var invoiced = invoicedByLine.FirstOrDefault(x => x.POLineId == line.Id)?.Qty ?? 0;
+            line.InvoicedQuantity = invoiced;
+            line.RemainingToInvoice = Math.Max(0, line.ReceivedQuantity - invoiced);
+        }
+
+        return BaseResponse<PODto>.Ok(dto);
     }
 }
 

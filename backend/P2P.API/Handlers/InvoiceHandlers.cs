@@ -19,6 +19,35 @@ public class SubmitInvoiceHandler(ApplicationDbContext db, ICurrentUser currentU
     {
         if (!currentUser.IsSupplier) return BaseResponse<string>.Fail("Only suppliers can submit invoices");
 
+        // Validate invoice quantities against received (accepted GR) qty and already-invoiced qty
+        var poLineIds = req.Lines.Select(l => l.POLineId).ToList();
+        var poLines = await db.POLines
+            .Where(pl => poLineIds.Contains(pl.Id))
+            .ToDictionaryAsync(pl => pl.Id, ct);
+
+        var alreadyInvoiced = await db.InvoiceLines
+            .Where(il => poLineIds.Contains(il.POLineId) && il.Invoice.Status != InvoiceStatus.Rejected)
+            .GroupBy(il => il.POLineId)
+            .Select(g => new { POLineId = g.Key, Qty = g.Sum(x => x.Quantity) })
+            .ToDictionaryAsync(x => x.POLineId, x => x.Qty, ct);
+
+        foreach (var l in req.Lines)
+        {
+            if (!poLines.TryGetValue(l.POLineId, out var poLine))
+                return BaseResponse<string>.Fail($"Invalid PO line in invoice.");
+
+            var received = poLine.ReceivedQuantity;
+            var invoiced = alreadyInvoiced.TryGetValue(l.POLineId, out var q) ? q : 0;
+            var available = received - invoiced;
+
+            if (received <= 0)
+                return BaseResponse<string>.Fail($"'{poLine.Description}' has not been received yet (no verified goods receipt). Cannot invoice.");
+
+            if (l.Quantity > available)
+                return BaseResponse<string>.Fail(
+                    $"'{poLine.Description}': cannot invoice {l.Quantity}. Received qty is {received}, already invoiced {invoiced}, only {available} available to invoice.");
+        }
+
         var lines = req.Lines.Select(l => new InvoiceLine
         {
             POLineId = l.POLineId, GRLineId = l.GRLineId, Description = l.Description,

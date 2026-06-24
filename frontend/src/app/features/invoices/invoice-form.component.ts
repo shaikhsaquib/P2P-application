@@ -18,7 +18,7 @@ import { AuthService } from '../../core/auth/auth.service';
 
 interface PurchaseOrder { id: string; poNumber: string; supplierName: string; }
 interface GR { id: string; grNumber: string; status: string; }
-interface POLine { id: string; itemCode: string; description: string; quantity: number; unitPrice: number; }
+interface POLine { id: string; itemCode: string; description: string; quantity: number; unitPrice: number; receivedQuantity: number; invoicedQuantity: number; remainingToInvoice: number; }
 
 @Component({
   selector: 'app-invoice-form',
@@ -90,7 +90,19 @@ interface POLine { id: string; itemCode: string; description: string; quantity: 
                       <mat-card-content>
                         <div class="line-header">
                           <strong>{{ lines()[i].itemCode }}</strong>
+                          <span class="qty-info">
+                            Ordered: {{ lines()[i].quantity }} &nbsp;|&nbsp;
+                            Received: {{ lines()[i].receivedQuantity }} &nbsp;|&nbsp;
+                            Already invoiced: {{ lines()[i].invoicedQuantity }} &nbsp;|&nbsp;
+                            <strong [class.no-qty]="lines()[i].remainingToInvoice <= 0">Available to invoice: {{ lines()[i].remainingToInvoice }}</strong>
+                          </span>
                         </div>
+                        @if (lines()[i].remainingToInvoice <= 0) {
+                          <div class="qty-warning">
+                            <mat-icon>warning</mat-icon>
+                            Nothing available to invoice on this line — invoice the received quantity only after a goods receipt is recorded.
+                          </div>
+                        }
                         <div class="line-inputs">
                           <mat-form-field appearance="outline" class="desc-field">
                             <mat-label>Description</mat-label>
@@ -98,7 +110,11 @@ interface POLine { id: string; itemCode: string; description: string; quantity: 
                           </mat-form-field>
                           <mat-form-field appearance="outline">
                             <mat-label>Quantity</mat-label>
-                            <input matInput type="number" formControlName="quantity" min="0" (input)="recalcTotal()">
+                            <input matInput type="number" formControlName="quantity" min="0" [max]="lines()[i].remainingToInvoice" (input)="recalcTotal()">
+                            <mat-hint>Max {{ lines()[i].remainingToInvoice }}</mat-hint>
+                            @if (linesArray.at(i).get('quantity')?.hasError('max')) {
+                              <mat-error>Exceeds available qty ({{ lines()[i].remainingToInvoice }})</mat-error>
+                            }
                           </mat-form-field>
                           <mat-form-field appearance="outline">
                             <mat-label>Unit Price</mat-label>
@@ -140,7 +156,11 @@ interface POLine { id: string; itemCode: string; description: string; quantity: 
     .form-row mat-form-field { flex: 1; min-width: 200px; }
     .spinner-container { display: flex; justify-content: center; padding: 24px; }
     .line-card { margin-bottom: 16px; background: #fafafa; }
-    .line-header { margin-bottom: 12px; }
+    .line-header { margin-bottom: 12px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+    .qty-info { font-size: 12px; color: #666; }
+    .qty-info .no-qty { color: #c62828; }
+    .qty-warning { display: flex; align-items: center; gap: 8px; color: #c62828; background: #ffebee; padding: 8px 12px; border-radius: 4px; font-size: 13px; margin-bottom: 12px; }
+    .qty-warning mat-icon { font-size: 18px; width: 18px; height: 18px; }
     .line-inputs { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
     .desc-field { flex: 2; }
     .line-inputs mat-form-field { flex: 1; min-width: 130px; }
@@ -202,7 +222,7 @@ export class InvoiceFormComponent implements OnInit {
           this.linesArray.push(this.fb.group({
             poLineId: [line.id],
             description: [line.description, Validators.required],
-            quantity: [line.quantity, [Validators.required, Validators.min(0)]],
+            quantity: [line.remainingToInvoice, [Validators.required, Validators.min(0), Validators.max(line.remainingToInvoice)]],
             unitPrice: [line.unitPrice, [Validators.required, Validators.min(0)]]
           }));
         });
@@ -245,8 +265,16 @@ export class InvoiceFormComponent implements OnInit {
       }))
     };
     this.api.post<any>('invoices', payload).subscribe({
-      next: r => { this.notification.success('Invoice submitted'); this.router.navigate(['/invoices', r.data]); },
-      error: () => { this.notification.error('Failed to submit invoice'); this.submitting.set(false); }
+      next: r => {
+        if (r?.success === false) {
+          this.notification.error(r.errors?.[0] || r.message || 'Failed to submit invoice');
+          this.submitting.set(false);
+          return;
+        }
+        this.notification.success('Invoice submitted');
+        this.router.navigate(['/invoices', r.data]);
+      },
+      error: (err) => { this.notification.error(err?.error?.errors?.[0] || err?.error?.message || 'Failed to submit invoice'); this.submitting.set(false); }
     });
   }
 }
