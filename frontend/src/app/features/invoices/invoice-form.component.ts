@@ -17,6 +17,7 @@ import { NotificationService } from '../../core/services/notification.service';
 import { AuthService } from '../../core/auth/auth.service';
 
 interface PurchaseOrder { id: string; poNumber: string; supplierName: string; }
+interface GR { id: string; grNumber: string; status: string; }
 interface POLine { id: string; itemCode: string; description: string; quantity: number; unitPrice: number; }
 
 @Component({
@@ -44,6 +45,15 @@ interface POLine { id: string; itemCode: string; description: string; quantity: 
                   <mat-select formControlName="purchaseOrderId" (selectionChange)="onPOSelected($event.value)">
                     @for (po of purchaseOrders(); track po.id) {
                       <mat-option [value]="po.id">{{ po.poNumber }} — {{ po.supplierName }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+                <mat-form-field appearance="outline">
+                  <mat-label>Goods Receipt (optional)</mat-label>
+                  <mat-select formControlName="grId">
+                    <mat-option [value]="null">— None —</mat-option>
+                    @for (gr of goodsReceipts(); track gr.id) {
+                      <mat-option [value]="gr.id">{{gr.grNumber}} ({{gr.status}})</mat-option>
                     }
                   </mat-select>
                 </mat-form-field>
@@ -149,6 +159,7 @@ export class InvoiceFormComponent implements OnInit {
   auth = inject(AuthService);
 
   purchaseOrders = signal<PurchaseOrder[]>([]);
+  goodsReceipts = signal<GR[]>([]);
   lines = signal<POLine[]>([]);
   loadingLines = signal(false);
   submitting = signal(false);
@@ -156,6 +167,7 @@ export class InvoiceFormComponent implements OnInit {
 
   form = this.fb.group({
     purchaseOrderId: ['', Validators.required],
+    grId: [null as string | null],
     invoiceDate: [new Date(), Validators.required],
     dueDate: [null as Date | null, Validators.required],
     bankReference: [''],
@@ -175,7 +187,13 @@ export class InvoiceFormComponent implements OnInit {
   onPOSelected(poId: string) {
     this.linesArray.clear();
     this.lines.set([]);
+    this.goodsReceipts.set([]);
+    this.form.patchValue({ grId: null });
     this.loadingLines.set(true);
+    // Load GRs for this PO
+    this.api.get<any>('goods-receipts', { poId, page: 1, pageSize: 50 }).subscribe({
+      next: r => this.goodsReceipts.set(r.data?.items ?? [])
+    });
     this.api.get<any>(`purchase-orders/${poId}`).subscribe({
       next: r => {
         const data: POLine[] = r.data?.lines ?? [];
@@ -212,7 +230,7 @@ export class InvoiceFormComponent implements OnInit {
     const v = this.form.value;
     const payload = {
       poId: v.purchaseOrderId,
-      grId: null,
+      grId: v.grId || null,
       vendorInvoiceNumber: v.bankReference || null,
       invoiceDate: v.invoiceDate,
       dueDate: v.dueDate,

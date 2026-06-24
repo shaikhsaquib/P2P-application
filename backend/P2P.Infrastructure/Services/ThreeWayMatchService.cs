@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using P2P.Application.Features.Invoices.Commands;
+using P2P.Domain.Entities;
 using P2P.Domain.Enums;
 using P2P.Infrastructure.Data;
 
@@ -18,6 +19,18 @@ public class ThreeWayMatchService(ApplicationDbContext context)
             .FirstOrDefaultAsync(i => i.Id == invoiceId, ct)
             ?? throw new Exception("Invoice not found");
 
+        // Find GR by direct link or by POId (pick the latest verified/submitted GR)
+        var grLines = invoice.GoodsReceipt?.Lines;
+        if (grLines == null)
+        {
+            var gr = await context.GoodsReceipts
+                .Include(g => g.Lines)
+                .Where(g => g.POId == invoice.POId && (g.Status == GRStatus.Verified || g.Status == GRStatus.Submitted))
+                .OrderByDescending(g => g.CreatedAt)
+                .FirstOrDefaultAsync(ct);
+            grLines = gr?.Lines;
+        }
+
         var lineResults = new List<LineMatchDto>();
         var overallStatus = MatchStatus.Matched;
         var notes = new List<string>();
@@ -27,14 +40,14 @@ public class ThreeWayMatchService(ApplicationDbContext context)
             var poLine = invLine.POLine;
             decimal grQty = 0;
 
-            if (invoice.GoodsReceipt != null)
+            if (grLines != null)
             {
-                var grLine = invoice.GoodsReceipt.Lines
-                    .FirstOrDefault(l => l.POLineId == poLine.Id);
+                var grLine = grLines.FirstOrDefault(l => l.POLineId == poLine.Id);
                 grQty = grLine?.QuantityAccepted ?? 0;
             }
 
-            var qtyMatch = invoice.GoodsReceipt == null || invLine.Quantity <= grQty;
+            // If no GR exists at all, flag as mismatch (can't approve without GR)
+            var qtyMatch = grLines != null ? invLine.Quantity <= grQty : false;
             var priceDiff = Math.Abs(invLine.UnitPrice - poLine.UnitPrice) / poLine.UnitPrice;
             var priceMatch = priceDiff <= PriceTolerance;
 
