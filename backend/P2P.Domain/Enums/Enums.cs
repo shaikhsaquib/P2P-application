@@ -13,6 +13,6 @@ public enum NotificationType
 {
     POReceived, RFQReceived, InvoiceStatusChanged, PaymentProcessed,
     DocumentExpiry, QuoteResult, GRVerified, RequisitionApproved,
-    RequisitionRejected, POAcknowledged, DisputeRaised, DisputeResolved
+    RequisitionRejected, POAcknowledged, DisputeRaised, DisputeResolved, ASNCreated
 }
 public enum UserRole { Admin, Approver, Requester, Finance, SupplierAdmin, SupplierUser }

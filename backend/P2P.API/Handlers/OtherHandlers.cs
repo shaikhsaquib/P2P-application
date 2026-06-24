@@ -177,7 +177,7 @@ public class CreateASNHandler(ApplicationDbContext db, ICurrentUser currentUser,
 {
     public async Task<BaseResponse<string>> Handle(CreateASNCommand req, CancellationToken ct)
     {
-        var po = await db.PurchaseOrders.FindAsync([req.POId], ct);
+        var po = await db.PurchaseOrders.Include(p => p.Supplier).FirstOrDefaultAsync(p => p.Id == req.POId, ct);
         if (po == null) return BaseResponse<string>.Fail("PO not found");
 
         var asn = new AdvanceShipmentNotice
@@ -189,6 +189,24 @@ public class CreateASNHandler(ApplicationDbContext db, ICurrentUser currentUser,
             Lines = req.Lines.Select(l => new ASNLine { POLineId = l.POLineId, ShippedQuantity = l.ShippedQuantity, BatchNumber = l.BatchNumber, SerialNumber = l.SerialNumber }).ToList()
         };
         db.AdvanceShipmentNotices.Add(asn);
+
+        // Notify all buyer-side users (Admin, Approver, Finance)
+        var buyerUserIds = await db.Users
+            .Where(u => u.Role == UserRole.Admin || u.Role == UserRole.Approver || u.Role == UserRole.Finance)
+            .Select(u => u.Id).ToListAsync(ct);
+        foreach (var uid in buyerUserIds)
+        {
+            db.Notifications.Add(new Notification
+            {
+                UserId = uid,
+                Type = NotificationType.ASNCreated,
+                Title = "New Shipment Notice",
+                Message = $"Supplier {po.Supplier.CompanyName} has created ASN for PO {po.PONumber}. Est. delivery: {req.EstimatedDeliveryDate:dd MMM yyyy}.",
+                RelatedEntityId = asn.Id,
+                RelatedEntityType = "ASN"
+            });
+        }
+
         await db.SaveChangesAsync(ct);
         return BaseResponse<string>.Ok(asn.Id, "ASN created");
     }

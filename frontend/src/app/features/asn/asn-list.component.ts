@@ -145,7 +145,7 @@ export class AsnListComponent implements OnInit {
 
   load() {
     this.loading.set(true);
-    const supplierId = this.auth.user()?.supplierId;
+    const supplierId = this.auth.isSupplier() ? this.auth.user()?.supplierId : null;
     this.api.get<any>('asn', { supplierId }).subscribe({
       next: r => { this.asns.set(r.data?.items ?? []); this.loading.set(false); },
       error: () => { this.notification.error('Failed to load ASNs'); this.loading.set(false); }
