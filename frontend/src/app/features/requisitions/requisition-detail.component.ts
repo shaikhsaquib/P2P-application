@@ -1,13 +1,16 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatTableModule } from '@angular/material/table';
 import { MatDividerModule } from '@angular/material/divider';
-import { MatDialogModule } from '@angular/material/dialog';
+import { MatSelectModule } from '@angular/material/select';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
 import { ApiService } from '../../core/services/api.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { AuthService } from '../../core/auth/auth.service';
@@ -15,7 +18,8 @@ import { AuthService } from '../../core/auth/auth.service';
 @Component({
   selector: 'app-requisition-detail',
   standalone: true,
-  imports: [CommonModule, RouterModule, MatCardModule, MatButtonModule, MatIconModule, MatChipsModule, MatTableModule, MatDividerModule, MatDialogModule],
+  imports: [CommonModule, RouterModule, FormsModule, MatCardModule, MatButtonModule, MatIconModule,
+    MatChipsModule, MatTableModule, MatDividerModule, MatSelectModule, MatFormFieldModule, MatInputModule],
   template: `
     @if (pr) {
       <div class="page">
@@ -31,13 +35,56 @@ import { AuthService } from '../../core/auth/auth.service';
             }
             @if (pr.status === 'Submitted' && auth.isApprover()) {
               <button mat-raised-button color="primary" (click)="approve()">Approve</button>
-              <button mat-raised-button color="warn" (click)="reject()">Reject</button>
+              <button mat-raised-button color="warn" (click)="showRejectPanel = true">Reject</button>
             }
             @if (pr.status === 'Approved' && auth.isApprover()) {
-              <button mat-raised-button color="accent" (click)="convertToPO()">Convert to PO</button>
+              <button mat-raised-button color="accent" (click)="showConvertPanel = !showConvertPanel">
+                <mat-icon>shopping_cart</mat-icon> Convert to PO
+              </button>
             }
           </div>
         </div>
+
+        <!-- Reject Panel -->
+        @if (showRejectPanel) {
+          <mat-card class="action-panel">
+            <mat-card-content>
+              <h3>Reject Requisition</h3>
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>Rejection Reason</mat-label>
+                <textarea matInput [(ngModel)]="rejectReason" rows="3" placeholder="Enter reason for rejection..."></textarea>
+              </mat-form-field>
+              <div class="panel-actions">
+                <button mat-button (click)="showRejectPanel = false">Cancel</button>
+                <button mat-raised-button color="warn" (click)="reject()" [disabled]="!rejectReason">Reject</button>
+              </div>
+            </mat-card-content>
+          </mat-card>
+        }
+
+        <!-- Convert to PO Panel -->
+        @if (showConvertPanel) {
+          <mat-card class="action-panel">
+            <mat-card-content>
+              <h3>Convert to Purchase Order</h3>
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>Select Supplier</mat-label>
+                <mat-select [(ngModel)]="selectedSupplierId">
+                  @for (s of suppliers; track s.id) {
+                    <mat-option [value]="s.id">{{s.companyName}} — {{s.email}}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+              @if (suppliers.length === 0) {
+                <p class="hint">Loading suppliers...</p>
+              }
+              <div class="panel-actions">
+                <button mat-button (click)="showConvertPanel = false">Cancel</button>
+                <button mat-raised-button color="accent" (click)="convertToPO()" [disabled]="!selectedSupplierId">Create PO</button>
+              </div>
+            </mat-card-content>
+          </mat-card>
+        }
 
         <div class="detail-grid">
           <mat-card>
@@ -94,6 +141,9 @@ import { AuthService } from '../../core/auth/auth.service';
     .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
     .page-header h1 { margin: 0 0 8px; font-size: 22px; font-weight: 600; color: #1e3a5f; }
     .header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .action-panel { margin-bottom: 16px; background: #f8f9ff; border: 1px solid #c5cae9; }
+    .action-panel h3 { margin: 0 0 16px; color: #1e3a5f; }
+    .panel-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
     .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
     .info-row { display: flex; padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
     .label { min-width: 140px; color: #666; font-size: 13px; }
@@ -106,6 +156,7 @@ import { AuthService } from '../../core/auth/auth.service';
     .tl-item div small { color: #666; font-size: 12px; }
     table { width: 100%; }
     .grand-total { text-align: right; padding: 16px; font-size: 18px; font-weight: 700; color: #1e3a5f; }
+    .hint { color: #999; font-size: 13px; }
     mat-chip { font-size: 11px; }
     .status-draft { background: #e0e0e0 !important; }
     .status-submitted { background: #fff3e0 !important; color: #e65100 !important; }
@@ -123,42 +174,46 @@ export class RequisitionDetailComponent implements OnInit {
   auth = inject(AuthService);
 
   pr: any = null;
+  suppliers: any[] = [];
   lineColumns = ['itemCode', 'description', 'qty', 'unitPrice', 'total'];
+  showConvertPanel = false;
+  showRejectPanel = false;
+  selectedSupplierId = '';
+  rejectReason = '';
 
   ngOnInit() {
     const id = this.route.snapshot.paramMap.get('id')!;
     this.api.get<any>(`requisitions/${id}`).subscribe(r => this.pr = r.data);
+    this.api.get<any>('suppliers', { approved: true }).subscribe(r => this.suppliers = r.data?.items ?? r.data ?? []);
   }
 
   submit() {
     this.api.post(`requisitions/${this.pr.id}/submit`, {}).subscribe({
       next: () => { this.notify.success('Submitted for approval'); this.pr.status = 'Submitted'; },
-      error: () => this.notify.error('Failed')
+      error: () => this.notify.error('Failed to submit')
     });
   }
 
   approve() {
     this.api.post(`requisitions/${this.pr.id}/approve`, {}).subscribe({
       next: () => { this.notify.success('Approved'); this.pr.status = 'Approved'; },
-      error: () => this.notify.error('Failed')
+      error: () => this.notify.error('Failed to approve')
     });
   }
 
   reject() {
-    const reason = prompt('Rejection reason:');
-    if (!reason) return;
-    this.api.post(`requisitions/${this.pr.id}/reject`, { reason }).subscribe({
-      next: () => { this.notify.success('Rejected'); this.pr.status = 'Rejected'; },
-      error: () => this.notify.error('Failed')
+    if (!this.rejectReason) return;
+    this.api.post(`requisitions/${this.pr.id}/reject`, { reason: this.rejectReason }).subscribe({
+      next: () => { this.notify.success('Rejected'); this.pr.status = 'Rejected'; this.showRejectPanel = false; },
+      error: () => this.notify.error('Failed to reject')
     });
   }
 
   convertToPO() {
-    const supplierId = prompt('Enter Supplier ID:');
-    if (!supplierId) return;
-    this.api.post<any>(`requisitions/${this.pr.id}/convert-to-po`, { supplierId }).subscribe({
-      next: (r) => { this.notify.success('PO created'); this.router.navigate(['/purchase-orders', r.data]); },
-      error: () => this.notify.error('Failed to convert')
+    if (!this.selectedSupplierId) return;
+    this.api.post<any>(`requisitions/${this.pr.id}/convert-to-po`, { supplierId: this.selectedSupplierId }).subscribe({
+      next: (r) => { this.notify.success('PO created successfully'); this.router.navigate(['/purchase-orders', r.data]); },
+      error: () => this.notify.error('Failed to convert to PO')
     });
   }
 }
