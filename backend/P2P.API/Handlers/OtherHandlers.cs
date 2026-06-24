@@ -319,6 +319,9 @@ public class GetBuyerDashboardHandler(ApplicationDbContext db)
         var startOfMonth = new DateTime(now.Year, now.Month, 1);
         var startOfYear = new DateTime(now.Year, 1, 1);
 
+        var spendMonth = (decimal)await db.Invoices.Where(i => i.Status == InvoiceStatus.Paid && i.PaidAt >= startOfMonth).SumAsync(i => (double)i.TotalAmount, ct);
+        var spendYear = (decimal)await db.Invoices.Where(i => i.Status == InvoiceStatus.Paid && i.PaidAt >= startOfYear).SumAsync(i => (double)i.TotalAmount, ct);
+
         var dto = new BuyerDashboardDto
         {
             TotalRequisitions = await db.Requisitions.CountAsync(ct),
@@ -327,15 +330,16 @@ public class GetBuyerDashboardHandler(ApplicationDbContext db)
             PendingGRs = await db.GoodsReceipts.CountAsync(g => g.Status == GRStatus.Submitted, ct),
             PendingInvoices = await db.Invoices.CountAsync(i => i.Status == InvoiceStatus.Submitted || i.Status == InvoiceStatus.UnderReview, ct),
             PendingSupplierApprovals = await db.Suppliers.CountAsync(s => !s.IsApproved && s.IsActive, ct),
-            TotalSpendThisMonth = await db.Invoices.Where(i => i.Status == InvoiceStatus.Paid && i.PaidAt >= startOfMonth).SumAsync(i => i.TotalAmount, ct),
-            TotalSpendThisYear = await db.Invoices.Where(i => i.Status == InvoiceStatus.Paid && i.PaidAt >= startOfYear).SumAsync(i => i.TotalAmount, ct)
+            TotalSpendThisMonth = spendMonth,
+            TotalSpendThisYear = spendYear
         };
 
-        dto.SpendByDepartment = await db.Requisitions
+        var spendByDept = await db.Requisitions
             .Where(r => r.Status == RequisitionStatus.Converted)
             .GroupBy(r => r.Department)
-            .Select(g => new SpendByDepartmentDto { Department = g.Key, Amount = g.Sum(r => r.TotalAmount) })
+            .Select(g => new { Department = g.Key, Amount = g.Sum(r => (double)r.TotalAmount) })
             .ToListAsync(ct);
+        dto.SpendByDepartment = spendByDept.Select(g => new SpendByDepartmentDto { Department = g.Department, Amount = (decimal)g.Amount }).ToList();
 
         dto.PendingApprovalItems = await db.Requisitions
             .Where(r => r.Status == RequisitionStatus.Submitted)
@@ -364,15 +368,19 @@ public class GetSupplierDashboardQueryHandler(ApplicationDbContext db, ICurrentU
         var startOfMonth = new DateTime(now.Year, now.Month, 1);
         var startOfYear = new DateTime(now.Year, 1, 1);
 
+        var billedMonth = (decimal)await db.Invoices.Where(i => i.SupplierId == supplierId && i.CreatedAt >= startOfMonth).SumAsync(i => (double)i.TotalAmount, ct);
+        var paidYear = (decimal)await db.Invoices.Where(i => i.SupplierId == supplierId && i.Status == InvoiceStatus.Paid && i.PaidAt >= startOfYear).SumAsync(i => (double)i.TotalAmount, ct);
+        var overdue = (decimal)await db.Invoices.Where(i => i.SupplierId == supplierId && i.Status == InvoiceStatus.Approved && i.DueDate < now).SumAsync(i => (double)i.TotalAmount, ct);
+
         var dto = new SupplierDashboardDto
         {
             ActivePOs = await db.PurchaseOrders.CountAsync(p => p.SupplierId == supplierId && p.Status != POStatus.Closed && p.Status != POStatus.Cancelled, ct),
             PendingInvoices = await db.Invoices.CountAsync(i => i.SupplierId == supplierId && (i.Status == InvoiceStatus.Submitted || i.Status == InvoiceStatus.UnderReview), ct),
             OpenRFQs = await db.RFQs.CountAsync(r => r.Suppliers.Any(s => s.SupplierId == supplierId) && r.Status == RFQStatus.Sent, ct),
             OpenDisputes = await db.Disputes.CountAsync(d => d.Invoice.SupplierId == supplierId && d.Status == DisputeStatus.Open, ct),
-            TotalBilledThisMonth = await db.Invoices.Where(i => i.SupplierId == supplierId && i.CreatedAt >= startOfMonth).SumAsync(i => i.TotalAmount, ct),
-            TotalPaidThisYear = await db.Invoices.Where(i => i.SupplierId == supplierId && i.Status == InvoiceStatus.Paid && i.PaidAt >= startOfYear).SumAsync(i => i.TotalAmount, ct),
-            OverdueAmount = await db.Invoices.Where(i => i.SupplierId == supplierId && i.Status == InvoiceStatus.Approved && i.DueDate < now).SumAsync(i => i.TotalAmount, ct)
+            TotalBilledThisMonth = billedMonth,
+            TotalPaidThisYear = paidYear,
+            OverdueAmount = overdue
         };
 
         return BaseResponse<SupplierDashboardDto>.Ok(dto);
