@@ -91,7 +91,7 @@ interface POLine { Id: string; ItemCode: string; Description: string; Quantity: 
                         <p class="line-desc">{{ lines()[i].Description }}</p>
                         <mat-form-field appearance="outline">
                           <mat-label>Shipped Qty</mat-label>
-                          <input matInput type="number" formControlName="shippedQty" min="0" [max]="lines()[i].orderedQty">
+                          <input matInput type="number" formControlName="shippedQty" min="0" [max]="lines()[i].Quantity">
                         </mat-form-field>
                       </mat-card-content>
                     </mat-card>
