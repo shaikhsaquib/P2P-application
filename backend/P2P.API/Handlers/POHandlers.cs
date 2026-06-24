@@ -25,7 +25,7 @@ public class CreatePOHandler(ApplicationDbContext db, ICurrentUser currentUser, 
             Notes = req.Notes, CreatedById = currentUser.UserId,
             Lines = req.Lines.Select(l => new POLine
             {
-                RequisitionLineId = l.RequisitionLineId, ItemCode = l.ItemCode,
+                RequisitionLineId = l.RequisitionLineId, ItemCode = l.ItemCode ?? string.Empty,
                 Description = l.Description, Quantity = l.Quantity,
                 Unit = l.Unit, UnitPrice = l.UnitPrice, TotalPrice = l.Quantity * l.UnitPrice
             }).ToList()

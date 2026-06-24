@@ -4,7 +4,7 @@ using P2P.Application.Common;
 namespace P2P.Application.Features.PurchaseOrders.Commands;
 
 public record CreatePOLineDto(
-    string? RequisitionLineId, string ItemCode, string Description,
+    string? RequisitionLineId, string? ItemCode, string Description,
     decimal Quantity, string Unit, decimal UnitPrice);
 
 public record CreatePOCommand(
