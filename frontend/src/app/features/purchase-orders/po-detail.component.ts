@@ -8,6 +8,7 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatTableModule } from '@angular/material/table';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { ApiService } from '../../core/services/api.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { AuthService } from '../../core/auth/auth.service';
@@ -18,7 +19,7 @@ import { AuthService } from '../../core/auth/auth.service';
   imports: [
     CommonModule, RouterModule,
     MatCardModule, MatButtonModule, MatIconModule,
-    MatChipsModule, MatTableModule, MatDividerModule, MatTooltipModule
+    MatChipsModule, MatTableModule, MatDividerModule, MatTooltipModule, MatProgressBarModule
   ],
   template: `
     @if (!po) {
@@ -55,6 +56,33 @@ import { AuthService } from '../../core/auth/auth.service';
             }
           </div>
         </div>
+
+        <!-- Fulfilment summary bar -->
+        @if (hasFulfilmentData()) {
+          <div class="fulfilment-summary">
+            <div class="fulfil-stat">
+              <span class="fulfil-label">Ordered</span>
+              <span class="fulfil-value">{{ totalOrdered() }}</span>
+            </div>
+            <div class="fulfil-stat received">
+              <span class="fulfil-label">Received (GR)</span>
+              <span class="fulfil-value">{{ totalReceived() }}</span>
+            </div>
+            <div class="fulfil-stat invoiced">
+              <span class="fulfil-label">Invoiced</span>
+              <span class="fulfil-value">{{ totalInvoiced() }}</span>
+            </div>
+            <div class="fulfil-stat remaining">
+              <span class="fulfil-label">Remaining to Receive</span>
+              <span class="fulfil-value">{{ totalOrdered() - totalReceived() }}</span>
+            </div>
+            <div class="fulfil-bar-wrap">
+              <div class="fulfil-bar-label">Receipt progress</div>
+              <mat-progress-bar mode="determinate" [value]="receiptPct()" color="primary"></mat-progress-bar>
+              <div class="fulfil-bar-pct">{{ receiptPct() | number:'1.0-0' }}%</div>
+            </div>
+          </div>
+        }
 
         <div class="detail-grid">
           <mat-card>
@@ -111,27 +139,60 @@ import { AuthService } from '../../core/auth/auth.service';
         </div>
 
         <mat-card>
-          <mat-card-header><mat-card-title>Line Items</mat-card-title></mat-card-header>
+          <mat-card-header><mat-card-title>Line Items & Fulfilment</mat-card-title></mat-card-header>
           <mat-card-content>
             <table mat-table [dataSource]="po.lines ?? []" class="full-table">
               <ng-container matColumnDef="description">
                 <th mat-header-cell *matHeaderCellDef>Description</th>
-                <td mat-cell *matCellDef="let l">{{l.description}}</td>
-              </ng-container>
-              <ng-container matColumnDef="unit">
-                <th mat-header-cell *matHeaderCellDef>Unit</th>
-                <td mat-cell *matCellDef="let l">{{l.unit}}</td>
-              </ng-container>
-              <ng-container matColumnDef="quantity">
-                <th mat-header-cell *matHeaderCellDef>Quantity</th>
-                <td mat-cell *matCellDef="let l">{{l.quantity}}</td>
+                <td mat-cell *matCellDef="let l">
+                  <div>{{l.description}}</div>
+                  <small class="item-code">{{l.itemCode}} · {{l.unit}}</small>
+                </td>
               </ng-container>
               <ng-container matColumnDef="unitPrice">
                 <th mat-header-cell *matHeaderCellDef>Unit Price</th>
                 <td mat-cell *matCellDef="let l">₹{{l.unitPrice | number:'1.2-2'}}</td>
               </ng-container>
+              <ng-container matColumnDef="ordered">
+                <th mat-header-cell *matHeaderCellDef>Ordered</th>
+                <td mat-cell *matCellDef="let l"><strong>{{l.quantity}}</strong></td>
+              </ng-container>
+              <ng-container matColumnDef="received">
+                <th mat-header-cell *matHeaderCellDef>Received</th>
+                <td mat-cell *matCellDef="let l">
+                  <span class="qty-received">{{l.receivedQuantity || 0}}</span>
+                </td>
+              </ng-container>
+              <ng-container matColumnDef="invoiced">
+                <th mat-header-cell *matHeaderCellDef>Invoiced</th>
+                <td mat-cell *matCellDef="let l">
+                  <span class="qty-invoiced">{{l.invoicedQuantity || 0}}</span>
+                </td>
+              </ng-container>
+              <ng-container matColumnDef="remaining">
+                <th mat-header-cell *matHeaderCellDef>Remaining</th>
+                <td mat-cell *matCellDef="let l">
+                  @if ((l.quantity - (l.receivedQuantity || 0)) <= 0) {
+                    <mat-chip class="chip-done"><mat-icon>check</mat-icon> Fully Received</mat-chip>
+                  } @else {
+                    <span class="qty-remaining">{{l.quantity - (l.receivedQuantity || 0)}}</span>
+                  }
+                </td>
+              </ng-container>
+              <ng-container matColumnDef="progress">
+                <th mat-header-cell *matHeaderCellDef>Receipt %</th>
+                <td mat-cell *matCellDef="let l">
+                  <div class="line-progress">
+                    <mat-progress-bar mode="determinate"
+                      [value]="lineReceiptPct(l)"
+                      [color]="lineReceiptPct(l) >= 100 ? 'primary' : 'accent'">
+                    </mat-progress-bar>
+                    <small>{{lineReceiptPct(l) | number:'1.0-0'}}%</small>
+                  </div>
+                </td>
+              </ng-container>
               <ng-container matColumnDef="total">
-                <th mat-header-cell *matHeaderCellDef>Total</th>
+                <th mat-header-cell *matHeaderCellDef>Line Total</th>
                 <td mat-cell *matCellDef="let l">₹{{(l.quantity * l.unitPrice) | number:'1.2-2'}}</td>
               </ng-container>
               <tr mat-header-row *matHeaderRowDef="lineColumns"></tr>
@@ -145,29 +206,64 @@ import { AuthService } from '../../core/auth/auth.service';
   `,
   styles: [`
     .loading { padding: 64px; text-align: center; color: #666; }
+    .page { padding: 24px; }
     .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
     .page-header h1 { margin: 0 0 8px; font-size: 22px; font-weight: 600; color: #1e3a5f; }
     .header-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
     .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+
+    /* Fulfilment summary */
+    .fulfilment-summary {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 0;
+      background: #f8faff; border: 1px solid #dde6f5; border-radius: 8px;
+      padding: 16px 24px; margin-bottom: 16px;
+    }
+    .fulfil-stat { flex: 1; min-width: 120px; padding: 0 16px; border-right: 1px solid #dde6f5; }
+    .fulfil-stat:first-child { padding-left: 0; }
+    .fulfil-stat.remaining { border-right: none; }
+    .fulfil-label { display: block; font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+    .fulfil-value { font-size: 22px; font-weight: 700; color: #1e3a5f; }
+    .fulfil-stat.received .fulfil-value { color: #2e7d32; }
+    .fulfil-stat.invoiced .fulfil-value { color: #6a1b9a; }
+    .fulfil-stat.remaining .fulfil-value { color: #e65100; }
+    .fulfil-bar-wrap { flex: 2; min-width: 200px; padding-left: 24px; }
+    .fulfil-bar-label { font-size: 11px; color: #888; margin-bottom: 6px; }
+    .fulfil-bar-pct { font-size: 12px; color: #666; margin-top: 4px; text-align: right; }
+
+    /* Info rows */
     .info-row { display: flex; align-items: center; padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
     .label { min-width: 140px; color: #666; font-size: 13px; }
     .amount { font-weight: 700; color: #1e3a5f; }
+
+    /* Timeline */
     .timeline { display: flex; flex-direction: column; gap: 12px; }
     .tl-item { display: flex; align-items: flex-start; gap: 8px; }
     .tl-item.done mat-icon { color: #2e7d32; }
     .tl-item.rejected mat-icon { color: #c62828; }
     .tl-item div strong { display: block; font-size: 14px; }
     .tl-item div small { color: #666; font-size: 12px; }
+
+    /* Lines table */
     .full-table { width: 100%; }
+    .item-code { color: #999; font-size: 11px; }
+    .qty-received { color: #2e7d32; font-weight: 600; }
+    .qty-invoiced { color: #6a1b9a; font-weight: 600; }
+    .qty-remaining { color: #e65100; font-weight: 600; }
+    .line-progress { display: flex; flex-direction: column; gap: 2px; min-width: 100px; }
+    .line-progress small { color: #666; font-size: 11px; text-align: right; }
+    .chip-done { background: #e8f5e9 !important; color: #2e7d32 !important; font-size: 11px !important; }
+    .chip-done mat-icon { font-size: 14px; width: 14px; height: 14px; vertical-align: middle; }
     .grand-total { text-align: right; padding: 16px; font-size: 18px; font-weight: 700; color: #1e3a5f; }
     mat-chip { font-size: 11px; }
     .status-draft { background: #e0e0e0 !important; }
-    .status-submitted { background: #fff3e0 !important; color: #e65100 !important; }
     .status-approved { background: #e8f5e9 !important; color: #2e7d32 !important; }
     .status-rejected { background: #ffebee !important; color: #c62828 !important; }
     .status-senttosupplier { background: #e3f2fd !important; color: #1565c0 !important; }
     .status-acknowledged { background: #f3e5f5 !important; color: #6a1b9a !important; }
-    @media(max-width: 768px) { .detail-grid { grid-template-columns: 1fr; } }
+    .status-partiallyreceived { background: #fff3e0 !important; color: #e65100 !important; }
+    .status-fullyreceived { background: #e8f5e9 !important; color: #1b5e20 !important; }
+    .status-closed { background: #eceff1 !important; color: #37474f !important; }
+    @media(max-width: 768px) { .detail-grid { grid-template-columns: 1fr; } .fulfilment-summary { gap: 16px; } .fulfil-stat { border-right: none; padding: 0; } }
   `]
 })
 export class PODetailComponent implements OnInit {
@@ -178,7 +274,7 @@ export class PODetailComponent implements OnInit {
 
   po: any = null;
   actionLoading = false;
-  lineColumns = ['description', 'unit', 'quantity', 'unitPrice', 'total'];
+  lineColumns = ['description', 'unitPrice', 'ordered', 'received', 'invoiced', 'remaining', 'progress', 'total'];
 
   ngOnInit() {
     const id = this.route.snapshot.paramMap.get('id')!;
@@ -187,6 +283,16 @@ export class PODetailComponent implements OnInit {
       error: () => this.notify.error('Failed to load PO')
     });
   }
+
+  hasFulfilmentData() {
+    return this.po?.lines?.some((l: any) => l.receivedQuantity > 0 || l.invoicedQuantity > 0);
+  }
+
+  totalOrdered()  { return (this.po?.lines ?? []).reduce((s: number, l: any) => s + (l.quantity || 0), 0); }
+  totalReceived() { return (this.po?.lines ?? []).reduce((s: number, l: any) => s + (l.receivedQuantity || 0), 0); }
+  totalInvoiced() { return (this.po?.lines ?? []).reduce((s: number, l: any) => s + (l.invoicedQuantity || 0), 0); }
+  receiptPct()    { const o = this.totalOrdered(); return o ? Math.min(100, (this.totalReceived() / o) * 100) : 0; }
+  lineReceiptPct(l: any) { return l.quantity ? Math.min(100, ((l.receivedQuantity || 0) / l.quantity) * 100) : 0; }
 
   approve() {
     if (!confirm('Approve this purchase order?')) return;
@@ -225,3 +331,4 @@ export class PODetailComponent implements OnInit {
     });
   }
 }
+
