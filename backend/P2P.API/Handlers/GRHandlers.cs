@@ -16,6 +16,59 @@ public class CreateGRHandler(ApplicationDbContext db, ICurrentUser currentUser, 
 {
     public async Task<BaseResponse<string>> Handle(CreateGRCommand req, CancellationToken ct)
     {
+        // --- Quantity validation: GR received <= PO ordered (and <= ASN shipped if ASN-linked) ---
+        var poLineIds = req.Lines.Select(l => l.POLineId).ToList();
+        var poLines = await db.POLines.Where(pl => poLineIds.Contains(pl.Id)).ToDictionaryAsync(pl => pl.Id, ct);
+
+        // Cumulative received per PO line across existing GRs (sum in memory — SQLite cannot Sum decimals)
+        var existingGrLines = await db.GRLines
+            .Where(gl => poLineIds.Contains(gl.POLineId))
+            .Select(gl => new { gl.POLineId, gl.ASNLineId, gl.QuantityReceived })
+            .ToListAsync(ct);
+        var receivedByPoLine = existingGrLines
+            .GroupBy(gl => gl.POLineId)
+            .ToDictionary(g => g.Key, g => g.Sum(x => x.QuantityReceived));
+
+        // ASN shipped quantities (if receiving against an ASN)
+        Dictionary<string, decimal> shippedByAsnLine = new();
+        Dictionary<string, decimal> receivedByAsnLine = new();
+        if (!string.IsNullOrEmpty(req.ASNId))
+        {
+            var asn = await db.Set<AdvanceShipmentNotice>().Include(a => a.Lines)
+                .FirstOrDefaultAsync(a => a.Id == req.ASNId, ct);
+            if (asn == null) return BaseResponse<string>.Fail("Selected ASN not found");
+            if (asn.POId != req.POId) return BaseResponse<string>.Fail("ASN does not belong to the selected PO");
+            shippedByAsnLine = asn.Lines.ToDictionary(al => al.Id, al => al.ShippedQuantity);
+            receivedByAsnLine = existingGrLines
+                .Where(gl => gl.ASNLineId != null)
+                .GroupBy(gl => gl.ASNLineId!)
+                .ToDictionary(g => g.Key, g => g.Sum(x => x.QuantityReceived));
+        }
+
+        foreach (var l in req.Lines)
+        {
+            if (!poLines.TryGetValue(l.POLineId, out var poLine))
+                return BaseResponse<string>.Fail("Invalid PO line in goods receipt.");
+
+            if (l.QuantityAccepted + l.QuantityRejected > l.QuantityReceived)
+                return BaseResponse<string>.Fail(
+                    $"'{poLine.Description}': accepted ({l.QuantityAccepted}) + rejected ({l.QuantityRejected}) cannot exceed received ({l.QuantityReceived}).");
+
+            var alreadyReceived = receivedByPoLine.TryGetValue(l.POLineId, out var r) ? r : 0;
+            if (alreadyReceived + l.QuantityReceived > poLine.Quantity)
+                return BaseResponse<string>.Fail(
+                    $"'{poLine.Description}': cannot receive {l.QuantityReceived}. Ordered {poLine.Quantity}, already received {alreadyReceived}, only {poLine.Quantity - alreadyReceived} remaining.");
+
+            if (!string.IsNullOrEmpty(req.ASNId) && l.ASNLineId != null)
+            {
+                var shipped = shippedByAsnLine.TryGetValue(l.ASNLineId, out var s) ? s : 0;
+                var asnReceived = receivedByAsnLine.TryGetValue(l.ASNLineId, out var ar) ? ar : 0;
+                if (asnReceived + l.QuantityReceived > shipped)
+                    return BaseResponse<string>.Fail(
+                        $"'{poLine.Description}': cannot receive {l.QuantityReceived} against this shipment. Shipped {shipped}, already received {asnReceived}, only {shipped - asnReceived} remaining on the ASN.");
+            }
+        }
+
         var gr = new GoodsReceipt
         {
             GRNumber = await numGen.GenerateGRNumberAsync(ct),

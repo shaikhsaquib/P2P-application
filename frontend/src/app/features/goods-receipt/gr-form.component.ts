@@ -33,6 +33,15 @@ import { NotificationService } from '../../core/services/notification.service';
                   }
                 </mat-select>
               </mat-form-field>
+              <mat-form-field appearance="outline" class="full">
+                <mat-label>Against Shipment (ASN) — optional</mat-label>
+                <mat-select formControlName="asnId" (selectionChange)="onASNSelected($event.value)" [disabled]="!form.value.poId">
+                  <mat-option [value]="null">— Receive directly against PO —</mat-option>
+                  @for (a of asns; track a.id) {
+                    <mat-option [value]="a.id">{{a.asnNumber}} ({{a.status}})</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
             </div>
             <div class="form-row">
               <mat-form-field appearance="outline">
@@ -56,12 +65,21 @@ import { NotificationService } from '../../core/services/notification.service';
                     <mat-card-content>
                       <div class="line-header">
                         <strong>{{lines[i].itemCode}}</strong>
-                        <span class="sub">{{lines[i].description}} &nbsp;|&nbsp; Ordered: {{lines[i].quantity}}</span>
+                        <span class="sub">
+                          {{lines[i].description}} &nbsp;|&nbsp; Ordered: {{lines[i].quantity}}
+                          &nbsp;|&nbsp; Already received: {{lines[i].receivedQuantity || 0}}
+                          @if (lines[i].shippedQuantity != null) { &nbsp;|&nbsp; Shipped on ASN: {{lines[i].shippedQuantity}} }
+                          &nbsp;|&nbsp; <strong [class.no-qty]="lines[i].maxReceivable <= 0">Max receivable: {{lines[i].maxReceivable}}</strong>
+                        </span>
                       </div>
                       <div class="form-row">
                         <mat-form-field appearance="outline">
                           <mat-label>Qty Received</mat-label>
-                          <input matInput type="number" formControlName="quantityReceived" min="0">
+                          <input matInput type="number" formControlName="quantityReceived" min="0" [max]="lines[i].maxReceivable">
+                          <mat-hint>Max {{lines[i].maxReceivable}}</mat-hint>
+                          @if (linesArray.at(i).get('quantityReceived')?.hasError('max')) {
+                            <mat-error>Exceeds max receivable ({{lines[i].maxReceivable}})</mat-error>
+                          }
                         </mat-form-field>
                         <mat-form-field appearance="outline">
                           <mat-label>Qty Accepted</mat-label>
@@ -107,6 +125,7 @@ import { NotificationService } from '../../core/services/notification.service';
     .line-header { margin-bottom: 12px; }
     .line-header strong { display: block; font-size: 15px; }
     .sub { font-size: 13px; color: #666; }
+    .sub .no-qty { color: #c62828; }
     h3 { color: #1e3a5f; margin-bottom: 12px; }
     .actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 16px; }
   `]
@@ -118,11 +137,13 @@ export class GrFormComponent implements OnInit {
   private fb = inject(FormBuilder);
 
   pos: any[] = [];
+  asns: any[] = [];
   lines: any[] = [];
   submitting = false;
 
   form = this.fb.group({
     poId: ['', Validators.required],
+    asnId: [null as string | null],
     receivedDate: [new Date(), Validators.required],
     notes: [''],
     lines: this.fb.array([])
@@ -131,8 +152,10 @@ export class GrFormComponent implements OnInit {
   get linesArray() { return this.form.get('lines') as FormArray; }
 
   ngOnInit() {
-    this.api.get<any>('purchase-orders', { status: 'Acknowledged', page: 1, pageSize: 100 }).subscribe({
-      next: r => this.pos = r.data?.items ?? [],
+    // Load POs that can still be received against (Acknowledged or PartiallyReceived)
+    this.api.get<any>('purchase-orders', { page: 1, pageSize: 200 }).subscribe({
+      next: r => this.pos = (r.data?.items ?? []).filter((p: any) =>
+        p.status === 'Acknowledged' || p.status === 'PartiallyReceived'),
       error: () => this.notify.error('Failed to load purchase orders')
     });
   }
@@ -140,22 +163,41 @@ export class GrFormComponent implements OnInit {
   onPOSelected(poId: string) {
     this.linesArray.clear();
     this.lines = [];
+    this.asns = [];
+    this.form.patchValue({ asnId: null });
+    // Load ASNs for this PO (optional receiving against a shipment)
+    this.api.get<any>(`asn/by-po/${poId}`).subscribe({
+      next: r => this.asns = (r.data ?? []).filter((a: any) => a.status !== 'Cancelled')
+    });
     this.api.get<any>(`purchase-orders/${poId}`).subscribe({
-      next: r => {
-        this.lines = r.data?.lines ?? [];
-        this.lines.forEach((l: any) => {
-          this.linesArray.push(this.fb.group({
-            poLineId: [l.id],
-            asnLineId: [null],
-            quantityReceived: [l.quantity, [Validators.required, Validators.min(0)]],
-            quantityAccepted: [l.quantity, [Validators.required, Validators.min(0)]],
-            quantityRejected: [0],
-            rejectionReason: [''],
-            batchNumber: ['']
-          }));
-        });
-      },
+      next: r => { this.lines = r.data?.lines ?? []; this.buildLines(null); },
       error: () => this.notify.error('Failed to load PO lines')
+    });
+  }
+
+  onASNSelected(asnId: string | null) {
+    const asn = this.asns.find(a => a.id === asnId) ?? null;
+    this.buildLines(asn);
+  }
+
+  // Rebuild line controls; if an ASN is selected, link asnLineId and cap by shipped qty
+  private buildLines(asn: any | null) {
+    this.linesArray.clear();
+    this.lines.forEach((l: any) => {
+      const remainingOnPo = Math.max(0, (l.quantity || 0) - (l.receivedQuantity || 0));
+      const asnLine = asn?.lines?.find((al: any) => al.poLineId === l.id) ?? null;
+      l.shippedQuantity = asnLine ? asnLine.shippedQuantity : null;
+      // max receivable = remaining on PO, further capped by shipped qty when receiving against an ASN
+      l.maxReceivable = asnLine ? Math.min(remainingOnPo, asnLine.shippedQuantity) : remainingOnPo;
+      this.linesArray.push(this.fb.group({
+        poLineId: [l.id],
+        asnLineId: [asnLine ? asnLine.id : null],
+        quantityReceived: [l.maxReceivable, [Validators.required, Validators.min(0), Validators.max(l.maxReceivable)]],
+        quantityAccepted: [l.maxReceivable, [Validators.required, Validators.min(0)]],
+        quantityRejected: [0],
+        rejectionReason: [''],
+        batchNumber: ['']
+      }));
     });
   }
 
@@ -165,12 +207,12 @@ export class GrFormComponent implements OnInit {
     const v = this.form.value;
     const payload = {
       poId: v.poId,
-      asnId: null,
+      asnId: v.asnId || null,
       receivedDate: v.receivedDate,
       notes: v.notes || null,
       lines: (v.lines as any[]).map(l => ({
         poLineId: l.poLineId,
-        asnLineId: null,
+        asnLineId: l.asnLineId || null,
         quantityReceived: l.quantityReceived,
         quantityAccepted: l.quantityAccepted,
         quantityRejected: l.quantityRejected,
@@ -179,8 +221,16 @@ export class GrFormComponent implements OnInit {
       }))
     };
     this.api.post<any>('goods-receipts', payload).subscribe({
-      next: r => { this.notify.success('Goods receipt created'); this.router.navigate(['/goods-receipts', r.data]); },
-      error: () => { this.notify.error('Failed to create GR'); this.submitting = false; }
+      next: r => {
+        if (r?.success === false) {
+          this.notify.error(r.errors?.[0] || r.message || 'Failed to create GR');
+          this.submitting = false;
+          return;
+        }
+        this.notify.success('Goods receipt created');
+        this.router.navigate(['/goods-receipts', r.data]);
+      },
+      error: (err) => { this.notify.error(err?.error?.errors?.[0] || err?.error?.message || 'Failed to create GR'); this.submitting = false; }
     });
   }
 }
