@@ -13,7 +13,7 @@ namespace P2P.API.Controllers;
 [ApiController, Route("api/asn"), Authorize]
 public class ASNController(IMediator mediator) : ControllerBase
 {
-    [HttpGet] public async Task<IActionResult> GetAll([FromQuery] GetASNsBySupplierQuery query, CancellationToken ct) => Ok(await mediator.Send(query, ct));
+    [HttpGet] public async Task<IActionResult> GetAll([FromQuery] string? supplierId, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default) => Ok(await mediator.Send(new GetASNsBySupplierQuery(supplierId, page, pageSize), ct));
     [HttpGet("{id}")] public async Task<IActionResult> GetById(string id, CancellationToken ct) => Ok(await mediator.Send(new GetASNByIdQuery(id), ct));
     [HttpGet("by-po/{poId}")] public async Task<IActionResult> GetByPO(string poId, CancellationToken ct) => Ok(await mediator.Send(new GetASNsByPOQuery(poId), ct));
     [HttpPost, Authorize(Roles = "SupplierAdmin,SupplierUser")] public async Task<IActionResult> Create([FromBody] CreateASNCommand cmd, CancellationToken ct) => Ok(await mediator.Send(cmd, ct));
